@@ -1,0 +1,343 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ─── 1. GLOBAL SAFETY NET (DEFAULT DENY) ──────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ─── 2. UTILS & HELPERS ──────────────────────────────────────────────────
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+    function isEmailVerified() { return request.auth.token.email_verified == true; }
+    function isAuthor(data) { return isSignedIn() && data.uid == request.auth.uid; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { 
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+    
+    // Server-Side Role-Based Check or exact bootstrapped admin
+    function isAdmin() { 
+      return isSignedIn() 
+        && (request.auth.token.email.lower() == 'abhimattikopp9845@gmail.com'
+            || request.auth.uid == 'qDkH30l4f1XN8xW9zR2p5T7s8L1');
+    }
+
+    function isProPlus() {
+      return isSignedIn() && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.plan == 'PRO_PLUS' || isAdmin());
+    }
+
+    // ─── 3. VALIDATORS ────────────────────────────────────────────────────────
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'username', 'plan'])
+        && data.uid is string && data.uid.size() > 0
+        && data.username is string && data.username.size() >= 0
+        && data.plan in ['FREE', 'PRO', 'PRO_PLUS']
+        && (data.get('email', '') == null || data.get('email', '') is string)
+        && (data.get('displayName', '') == null || data.get('displayName', '') is string)
+        && (data.get('bio', '') == null || data.get('bio', '') is string)
+        && (data.get('category', '') == null || data.get('category', '') is string)
+        && (data.get('themeId', '') == null || data.get('themeId', '') is string)
+        && (data.get('onboardingDone', false) == null || data.get('onboardingDone', false) is bool)
+        && (data.get('isActive', true) == null || data.get('isActive', true) is bool)
+        && (data.get('isVerified', false) == null || data.get('isVerified', false) is bool)
+        && (data.get('createdAt', request.time) == null || data.get('createdAt', request.time) is timestamp)
+        && (data.get('updatedAt', request.time) == null || data.get('updatedAt', request.time) is timestamp);
+    }
+
+    function isValidLink(data) {
+      return data.keys().hasAll(['title', 'url', 'position', 'isActive'])
+        && data.title is string && data.title.size() <= 200
+        && data.url is string && data.url.size() <= 2048
+        && data.position is int
+        && data.isActive is bool;
+    }
+
+    function isValidProduct(data) {
+      return (data.get('title', '') is string || data.get('name', '') is string)
+        && (data.get('title', '').size() <= 128 || data.get('name', '').size() <= 128)
+        && (data.get('price', 0) is number || data.get('price', 0) is int)
+        && (data.get('currency', 'INR') is string)
+        && (data.get('isActive', true) is bool)
+        && (data.get('coverImageUrl', '') is string || data.get('imageUrl', '') is string)
+        && (data.get('fileUrl', '') is string)
+        && (data.get('description', '') is string)
+        && (data.get('category', 'Other') is string)
+        && (data.get('totalSales', 0) is int)
+        && (data.get('totalRevenue', 0) is number || data.get('totalRevenue', 0) is int)
+        && (data.get('updatedAt', request.time) is timestamp);
+    }
+
+    function isValidOrder(data) {
+      return data.get('productId', '') is string
+        && data.get('creatorId', '') is string
+        && data.get('buyerEmail', '') is string
+        && (data.get('amount', 0) is number || data.get('amount', 0) is int)
+        && (data.get('createdAt', request.time) is timestamp);
+    }
+
+    function isValidAppSettings(data) {
+      return data.appName is string && data.appName.size() <= 64
+        && data.maintenanceMode is bool
+        && (data.proPriceMonthly is number || data.proPriceMonthly is int)
+        && (data.proPlusPriceMonthly is number || data.proPlusPriceMonthly is int)
+        && (data.get('updatedAt', request.time) is timestamp);
+    }
+
+    function isValidAdminLog(data) {
+      return data.adminId is string && data.adminId.size() > 0
+        && data.adminEmail is string && data.adminEmail.size() > 0
+        && data.action is string && data.action.size() > 0
+        && (data.get('timestamp', request.time) is timestamp);
+    }
+
+    function isValidEmailSubscriber(data) {
+      return data.keys().hasAll(['creatorId', 'creatorUsername', 'email'])
+        && data.creatorId is string && data.creatorId.size() > 0
+        && data.creatorUsername is string && data.creatorUsername.size() > 0
+        && data.email is string && data.email.size() > 0 && data.email.size() <= 128
+        && (data.get('source', '') == null || data.get('source', '') is string)
+        && (data.get('subscribedAt', request.time) == null || data.get('subscribedAt', request.time) is timestamp);
+    }
+
+    function isValidCustomDomain(data) {
+      return data.keys().hasAll(['userId', 'username', 'domain', 'verificationToken', 'verified', 'sslEnabled', 'createdAt', 'verifiedAt'])
+        && data.userId is string && data.userId.size() > 0
+        && data.username is string && data.username.size() > 0
+        && data.domain is string && data.domain.size() > 0
+        && data.verificationToken is string && data.verificationToken.size() > 0
+        && data.verified is bool
+        && data.sslEnabled is bool
+        && (data.createdAt is timestamp)
+        && (data.verifiedAt == null || data.verifiedAt is timestamp);
+    }
+
+    function isValidShortLink(data) {
+      return data.keys().hasAll(['userId', 'originalUrl', 'shortCode', 'clicks', 'createdAt', 'active'])
+        && data.userId is string && data.userId.size() > 0
+        && data.originalUrl is string && data.originalUrl.size() <= 2048
+        && data.shortCode is string && data.shortCode.size() <= 128
+        && data.clicks is int
+        && data.active is bool;
+    }
+
+    // ─── 4. PATH SPECIFIC MATCH BLOCKS ────────────────────────────────────────
+
+    match /users/{uid} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow delete: if isAdmin();
+      
+      // Enforce default FREE plan during sign up client-side
+      allow create: if isOwner(uid) && isValidUser(incoming())
+                       && incoming().plan == 'FREE'
+                       && incoming().get('subscriptionStatus', 'INACTIVE') == 'INACTIVE';
+      
+      // Enforce immutability of tier/premium fields during standard profile updates
+      allow update: if isAdmin() 
+                    || (isOwner(uid) && isValidUser(incoming())
+                       && incoming().plan == existing().plan
+                       && incoming().get('planType', '') == existing().get('planType', '')
+                       && incoming().get('subscriptionStatus', 'INACTIVE') == existing().get('subscriptionStatus', 'INACTIVE')
+                       && incoming().get('isVerified', false) == existing().get('isVerified', false));
+
+      match /links/{linkId} {
+        allow read: if true;
+        allow create: if isOwner(uid) || isAdmin();
+        allow delete: if isOwner(uid) || isAdmin();
+        allow update: if isOwner(uid) || isAdmin() || 
+                        (incoming().diff(existing()).affectedKeys().hasOnly(['clickCount', 'lastClickedAt']));
+      }
+
+      match /pageViews/{viewId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if true;
+      }
+      
+      match /clickEvents/{eventId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if true;
+      }
+      
+      match /analytics/tips/{tipId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if true;
+      }
+      
+      match /analytics/{aType}/{recordId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if true;
+      }
+      
+      match /analytics/tips/records/{tipId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if true;
+      }
+      
+      match /invoices/{invoiceId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if isAdmin(); // only written by system
+      }
+      
+      // Products — readable by all, writable by owner under strict schema limits
+      match /products/{productId} {
+        allow read: if true;
+        allow create: if isOwner(uid) && isValidProduct(incoming());
+        allow delete: if isOwner(uid) || isAdmin();
+        allow update: if (isOwner(uid) && isValidProduct(incoming()) && incoming().userId == existing().userId) || isAdmin();
+      }
+
+      // Orders (Sub-Collection nesting fallback for older code routes)
+      match /orders/{orderId} {
+        allow get: if true;
+        allow list: if isOwner(uid) || isAdmin();
+        allow create: if isSignedIn();
+        allow update: if isAdmin() || isOwner(uid);
+      }
+
+      // Reviews — readable by all
+      match /reviews/{reviewId} {
+        allow read: if true;
+        allow create: if isSignedIn();
+        allow update, delete: if isOwner(uid) || isAdmin();
+      }
+
+      // Withdrawals — readable and writable by owner or admin
+      match /withdrawals/{withdrawalId} {
+        allow read, write: if isOwner(uid) || isAdmin();
+      }
+    }
+
+    // ─── TOP LEVEL SERVICES ──────────────────────────────────────────────────
+
+    match /short_links/{linkId} {
+      allow read: if true;
+      allow create: if isProPlus() && isOwner(incoming().userId) && isValidShortLink(incoming());
+      allow update: if isAdmin()
+                    || (isProPlus() && isOwner(existing().userId) && isValidShortLink(incoming()) && incoming().userId == existing().userId)
+                    || (incoming().diff(existing()).affectedKeys().hasOnly(['clicks', 'lastClick', 'uniqueVisitors', 'devices', 'browsers', 'countries', 'referrers']));
+      allow delete: if (isSignedIn() && isOwner(existing().userId)) || isAdmin();
+
+      match /clicks/{clickId} {
+        allow create: if true;
+        allow read: if (isSignedIn() && isOwner(get(/databases/$(database)/documents/short_links/$(linkId)).data.userId)) || isAdmin();
+      }
+    }
+
+    match /orders/{orderId} {
+      allow read: if isAdmin() || (isSignedIn() && (resource.data.creatorId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow create: if isSignedIn() && isValidOrder(incoming());
+      allow update: if isAdmin() || (isSignedIn() && (existing().creatorId == request.auth.uid || existing().userId == request.auth.uid));
+      allow delete: if isAdmin();
+    }
+
+    match /payouts/{payoutId} {
+      allow read: if isOwner(payoutId) || isAdmin();
+      allow create: if isSignedIn() && isOwner(payoutId);
+      allow update: if isAdmin() || (isOwner(payoutId) && incoming().get('status', 'PENDING') == 'PENDING');
+      allow delete: if isAdmin();
+    }
+
+    match /withdrawals/{withdrawalId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isSignedIn() && incoming().uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /customDomains/{domain} {
+      allow read: if true;
+      allow create: if isSignedIn() && isOwner(incoming().userId) && isValidCustomDomain(incoming());
+      allow update: if isSignedIn() && (isOwner(existing().userId) || isAdmin()) && isValidCustomDomain(incoming()) && incoming().userId == existing().userId;
+      allow delete: if isSignedIn() && (isOwner(existing().userId) || isAdmin());
+    }
+
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if isSignedIn() && isOwner(incoming().uid);
+      allow update: if (isSignedIn() && existing().uid == request.auth.uid && incoming().uid == request.auth.uid) || isAdmin();
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    // Protect PII database
+    match /emails/{email} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && isOwner(incoming().uid);
+      allow update: if (isSignedIn() && existing().uid == request.auth.uid && incoming().uid == request.auth.uid) || isAdmin();
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    match /domains/{domain} {
+      allow read: if true;
+      allow create: if isSignedIn() && isOwner(incoming().uid);
+      allow update: if (isSignedIn() && existing().uid == request.auth.uid && incoming().uid == request.auth.uid) || isAdmin();
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    match /analytics/{aUid} {
+      allow read: if isOwner(aUid) || isAdmin();
+      
+      match /daily/{date} {
+        allow read: if isOwner(aUid) || isAdmin();
+        // Allow dynamic clicks/views aggregations from direct cards
+        allow create, update: if incoming().keys().hasOnly(['views', 'clicks', 'date', 'updatedAt', 'revenue']);
+      }
+    }
+
+    match /appSettings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /adminLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && isValidAdminLog(incoming());
+    }
+
+    match /downloads/{token} {
+      allow read: if true;
+      allow create: if true;
+      // Protected against self-reallocation of products
+      allow update: if isAdmin(); 
+      allow delete: if false;
+    }
+
+    match /emailSubscribers/{subscriberId} {
+      allow get: if true;
+      allow list: if isSignedIn() && (resource.data.creatorId == request.auth.uid || isAdmin());
+      allow create: if isValidEmailSubscriber(incoming());
+      allow update: if false;
+      allow delete: if isSignedIn() && (resource.data.creatorId == request.auth.uid || isAdmin());
+    }
+
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Completely locked to standard user manipulations to prevent fraud
+    match /subscriptions/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /payment_history/{payId} {
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /payment_connections/{payConnId} {
+      allow read: if isSignedIn() && (resource.data.user_id == request.auth.uid || resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if isSignedIn() && (
+        (resource == null && (incoming().user_id == request.auth.uid || incoming().userId == request.auth.uid)) ||
+        (resource != null && (existing().user_id == request.auth.uid || existing().userId == request.auth.uid))
+      );
+    }
+  }
+}

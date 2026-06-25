@@ -1,0 +1,396 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "username": { "type": "string" },
+        "displayName": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "bio": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "category": { "type": "string" },
+        "location": { "type": "string" },
+        "website": { "type": "string" },
+        "instagramHandle": { "type": "string" },
+        "youtubeHandle": { "type": "string" },
+        "twitterHandle": { "type": "string" },
+        "spotifyUrl": { "type": "string" },
+        "linkedinHandle": { "type": "string" },
+        "customDomain": { "type": "string" },
+        "plan": { "type": "string", "enum": ["FREE", "PRO", "PRO_PLUS"] },
+        "planType": { "type": "string", "enum": ["Monthly", "Yearly"] },
+        "themeId": { "type": "string" },
+        "accentColor": { "type": "string" },
+        "bgColor": { "type": "string" },
+        "buttonStyle": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "isVerified": { "type": "boolean" },
+        "onboardingDone": { "type": "boolean" },
+        "aiUsedThisMonth": { "type": "number" },
+        "aiResetAt": { "type": "object" },
+        "planStartedAt": { "type": "object" },
+        "planExpiresAt": { "type": "object" },
+        "emailFormTitle": { "type": "string" },
+        "emailFormDesc": { "type": "string" },
+        "emailFormBtn": { "type": "string" },
+        "emailFormActive": { "type": "boolean" },
+        "welcomeEmailSubject": { "type": "string" },
+        "welcomeEmailBody": { "type": "string" },
+        "welcomeEmailActive": { "type": "boolean" },
+        "createdAt": { "type": "object" },
+        "updatedAt": { "type": "object" }
+      },
+      "required": ["uid", "email", "username", "plan"]
+    },
+    "Username": {
+      "title": "Username Registry",
+      "description": "Maps usernames to UIDs",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" }
+      },
+      "required": ["uid"]
+    },
+    "Link": {
+      "title": "Link",
+      "description": "User link items",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "url": { "type": "string" },
+        "icon": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "isPinned": { "type": "boolean" },
+        "position": { "type": "number" },
+        "clickCount": { "type": "number" },
+        "showFrom": { "type": "object" },
+        "showUntil": { "type": "object" },
+        "createdAt": { "type": "object" },
+        "updatedAt": { "type": "object" }
+      },
+      "required": ["title", "url", "position"]
+    },
+    "PageView": {
+      "title": "Page View",
+      "description": "Page view event logs with device and region tracking",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "device": { "type": "string", "description": "mobile, tablet, or desktop" },
+        "browser": { "type": "string" },
+        "region": { "type": "string", "description": "Derived from browser timezone" },
+        "referer": { "type": "string" },
+        "timestamp": { "type": "object" }
+      }
+    },
+    "ClickEvent": {
+      "title": "Click Event",
+      "description": "Link click event logs with device and region tracking",
+      "type": "object",
+      "properties": {
+        "linkId": { "type": "string" },
+        "linkTitle": { "type": "string" },
+        "device": { "type": "string", "description": "mobile, tablet, or desktop" },
+        "browser": { "type": "string" },
+        "region": { "type": "string", "description": "Derived from browser timezone" },
+        "timestamp": { "type": "object" }
+      }
+    },
+    "DailyAnalytics": {
+      "title": "Daily Analytics",
+      "description": "Daily aggregated stats",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "views": { "type": "number" },
+        "clicks": { "type": "number" }
+      }
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Billing invoice history",
+      "type": "object",
+      "properties": {
+        "invoiceNumber": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "status": { "type": "string", "enum": ["PAID", "VOID", "UNPAID"] },
+        "plan": { "type": "string" },
+        "planType": { "type": "string" },
+        "billingDate": { "type": "object" },
+        "createdAt": { "type": "object" }
+      },
+      "required": ["invoiceNumber", "amount", "currency", "status"]
+    },
+    "Product": {
+      "title": "Digital Product",
+      "description": "Digital products for creators to sell",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "currency": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "fileUrl": { "type": "string" },
+        "fileSize": { "type": "number" },
+        "fileType": { "type": "string" },
+        "category": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "position": { "type": "number" },
+        "totalSales": { "type": "number" },
+        "totalRevenue": { "type": "number" },
+        "createdAt": { "type": "object" },
+        "updatedAt": { "type": "object" }
+      },
+      "required": ["userId", "name", "price", "currency", "isActive"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Product purchase records",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "creatorId": { "type": "string" },
+        "buyerEmail": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "paymentStatus": { "type": "string", "enum": ["PENDING", "COMPLETED", "FAILED"] },
+        "downloadToken": { "type": "string" },
+        "createdAt": { "type": "object" }
+      },
+      "required": ["productId", "creatorId", "buyerEmail", "amount", "paymentStatus"]
+    },
+    "Download": {
+      "title": "Download Tracking",
+      "description": "Tracking for digital product downloads",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string" },
+        "productId": { "type": "string" },
+        "downloadCount": { "type": "number" },
+        "lastDownloadedAt": { "type": "object" },
+        "ipAddress": { "type": "string" }
+      },
+      "required": ["orderId", "productId", "downloadCount"]
+    },
+    "AppSettings": {
+      "title": "App Settings",
+      "description": "Global application configuration",
+      "type": "object",
+      "properties": {
+        "appName": { "type": "string" },
+        "maintenanceMode": { "type": "boolean" },
+        "proPriceMonthly": { "type": "number" },
+        "proPlusPriceMonthly": { "type": "number" },
+        "updatedAt": { "type": "object" }
+      },
+      "required": ["appName", "maintenanceMode", "proPriceMonthly", "proPlusPriceMonthly"]
+    },
+    "AdminLog": {
+      "title": "Admin Action Log",
+      "description": "Records of administrative actions",
+      "type": "object",
+      "properties": {
+        "adminId": { "type": "string" },
+        "adminEmail": { "type": "string" },
+        "action": { "type": "string" },
+        "targetId": { "type": "string" },
+        "targetName": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "object" }
+      },
+      "required": ["adminId", "adminEmail", "action", "timestamp"]
+    },
+    "TipAnalytics": {
+      "title": "Tip Jar Analytics",
+      "description": "UPI Tip click event logs",
+      "type": "object",
+      "properties": {
+        "upiId": { "type": "string" },
+        "amount": { "type": "number" },
+        "device": { "type": "string", "description": "mobile, tablet, or desktop" },
+        "browser": { "type": "string" },
+        "region": { "type": "string" },
+        "timestamp": { "type": "object" }
+      },
+      "required": ["upiId", "amount", "device", "browser", "region", "timestamp"]
+    },
+    "EmailSubscriber": {
+      "title": "Email Subscriber",
+      "description": "Subscriber email addresses collected from creators profile",
+      "type": "object",
+      "properties": {
+        "creatorId": { "type": "string" },
+        "creatorUsername": { "type": "string" },
+        "email": { "type": "string" },
+        "source": { "type": "string" },
+        "subscribedAt": { "type": "object" }
+      },
+      "required": ["creatorId", "creatorUsername", "email"]
+    },
+    "CustomDomain": {
+      "title": "Custom Domain Mapping",
+      "description": "User verified custom domains for white-label public profile",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "domain": { "type": "string" },
+        "verificationToken": { "type": "string" },
+        "verified": { "type": "boolean" },
+        "sslEnabled": { "type": "boolean" },
+        "createdAt": { "type": "object" },
+        "verifiedAt": { "type": "object" }
+      },
+      "required": ["userId", "username", "domain", "verificationToken", "verified"]
+    },
+    "Report": {
+      "title": "Moderation Report",
+      "description": "User reports for spam, abuse, copyright, etc.",
+      "type": "object",
+      "properties": {
+        "reporterId": { "type": "string" },
+        "reportedUsername": { "type": "string" },
+        "reportedUserId": { "type": "string" },
+        "reason": { "type": "string" },
+        "details": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "object" },
+        "updatedAt": { "type": "object" }
+      },
+      "required": ["reportedUsername", "reportedUserId", "reason", "status"]
+    },
+    "Announcement": {
+      "title": "Platform Announcement",
+      "description": "System-wide announcements created by admin",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "sendTo": { "type": "string" },
+        "createdAt": { "type": "object" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["title", "message", "sendTo", "createdAt"]
+    },
+    "ShortLink": {
+      "title": "Shortened URL Link",
+      "description": "Shortened URLs generated by Pro+ users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "originalUrl": { "type": "string" },
+        "shortCode": { "type": "string" },
+        "clicks": { "type": "number" },
+        "createdAt": { "type": "object" },
+        "active": { "type": "boolean" },
+        "uniqueVisitors": { "type": "number" },
+        "devices": { "type": "object" },
+        "browsers": { "type": "object" },
+        "countries": { "type": "object" },
+        "referrers": { "type": "object" },
+        "firstClick": { "type": "object" },
+        "lastClick": { "type": "object" }
+      },
+      "required": ["userId", "originalUrl", "shortCode", "clicks", "createdAt", "active"]
+    },
+    "ShortLinkClick": {
+      "title": "Short Link Click Event",
+      "description": "Shortened url visitor click details",
+      "type": "object",
+      "properties": {
+        "device": { "type": "string" },
+        "browser": { "type": "string" },
+        "country": { "type": "string" },
+        "referrer": { "type": "string" },
+        "timestamp": { "type": "object" },
+        "isUnique": { "type": "boolean" }
+      },
+      "required": ["device", "browser", "timestamp"]
+    },
+    "Subscription": {
+      "title": "Subscription Status",
+      "description": "Premium active subscriptions registry",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "plan": { "type": "string" },
+        "status": { "type": "string" },
+        "subscriptionStatus": { "type": "string" },
+        "startedAt": { "type": "object" },
+        "expiresAt": { "type": "object" },
+        "updatedAt": { "type": "object" }
+      },
+      "required": ["userId", "plan", "status", "subscriptionStatus"]
+    },
+    "PaymentHistory": {
+      "title": "Payment History Record",
+      "description": "Completed transaction payment receipts",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "planPurchased": { "type": "string" },
+        "amountPaid": { "type": "number" },
+        "date": { "type": "object" },
+        "createdAt": { "type": "object" },
+        "paymentId": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["userId", "planPurchased", "amountPaid", "paymentId", "status"]
+    },
+    "PaymentConnection": {
+      "title": "Payment Connection",
+      "description": "Creator connected payment gateways",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "provider": { "type": "string" },
+        "merchant_id": { "type": "string" },
+        "account_id": { "type": "string" },
+        "business_name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "status": { "type": "string" },
+        "connected_at": { "type": "object" },
+        "last_synced_at": { "type": "object" },
+        "created_at": { "type": "object" },
+        "updated_at": { "type": "object" }
+      },
+      "required": ["user_id", "provider", "status"]
+    }
+  },
+  "firestore": {
+    "/customDomains/{domain}": { "schema": "CustomDomain", "description": "Custom Domain mappings" },
+    "/usernames/{username}": { "schema": "Username", "description": "Global username registry" },
+    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/users/{uid}/links/{linkId}": { "schema": "Link", "description": "User links" },
+    "/users/{uid}/pageViews/{viewId}": { "schema": "PageView", "description": "Page view events" },
+    "/users/{uid}/clickEvents/{eventId}": { "schema": "ClickEvent", "description": "Click events" },
+    "/users/{uid}/invoices/{invoiceId}": { "schema": "Invoice", "description": "Billing history" },
+    "/users/{uid}/products/{productId}": { "schema": "Product", "description": "User store products" },
+    "/users/{uid}/analytics/tips/{tipId}": { "schema": "TipAnalytics", "description": "UPI Tip analytics tracking" },
+    "/orders/{orderId}": { "schema": "Order", "description": "Global orders collection" },
+    "/downloads/{downloadId}": { "schema": "Download", "description": "Download tracking" },
+    "/analytics/{uid}/daily/{date}": { "schema": "DailyAnalytics", "description": "Daily stats" },
+    "/appSettings/{settingId}": { "schema": "AppSettings", "description": "Global settings" },
+    "/adminLogs/{logId}": { "schema": "AdminLog", "description": "Administrative audit logs" },
+    "/emailSubscribers/{subscriberId}": { "schema": "EmailSubscriber", "description": "Subscribers list table" },
+    "/reports/{reportId}": { "schema": "Report", "description": "Moderation reports" },
+    "/announcements/{announcementId}": { "schema": "Announcement", "description": "Global announcements" },
+    "/short_links/{linkId}": { "schema": "ShortLink", "description": "Shortened link documents" },
+    "/short_links/{linkId}/clicks/{clickId}": { "schema": "ShortLinkClick", "description": "Visitor click records" },
+    "/subscriptions/{uid}": { "schema": "Subscription", "description": "User active subscriptions" },
+    "/payment_history/{payId}": { "schema": "PaymentHistory", "description": "Subscription payment receipts history" },
+    "/payment_connections/{payConnId}": { "schema": "PaymentConnection", "description": "Creator connected payment gateways" }
+  }
+}

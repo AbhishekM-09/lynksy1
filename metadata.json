@@ -1,0 +1,6 @@
+{
+  "name": "Lynksy",
+  "description": "One Link. Every Possibility. The smartly curated link-in-bio platform for Indian creators.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

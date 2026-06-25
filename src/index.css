@@ -1,0 +1,224 @@
+@import "tailwindcss";
+
+@theme {
+  --breakpoint-xs: 400px;
+  
+  --color-orange: #6366F1;
+  --color-orange-hover: #4F46E5;
+  --color-orange-light: #EEF2FF;
+  --color-orange-border: rgba(99,102,241,0.25);
+  
+  --color-ink: #18181B;
+  --color-ink-2: #27272A;
+  --color-ink-3: #3F3F46;
+  --color-ink-4: #52525B;
+  
+  --color-cream: #F8F7F4;
+  --color-cream-1: #FAF9F6;
+  --color-cream-2: #F1F1F1;
+  --color-cream-3: #EBEBEB;
+  
+  --color-muted: #9A8F84;
+  --color-muted-2: #C5BBB0;
+  
+  --font-syne: "Outfit", system-ui, sans-serif;
+  --font-jakarta: "Outfit", sans-serif;
+  --font-outfit: "Outfit", sans-serif;
+  --font-archivo: "Archivo Black", sans-serif;
+  --font-serif: "Playfair Display", serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --font-grotesk: "Space Grotesk", sans-serif;
+  --font-rounded: "Quicksand", sans-serif;
+  
+  --shadow-orange: 0 8px 32px rgba(99,102,241,0.15);
+  --shadow-card: 0 1px 4px rgba(0,0,0,0.06);
+  --shadow-hover: 0 20px 40px rgba(0,0,0,0.12);
+}
+
+@layer base {
+  * { box-sizing: border-box; }
+  html { 
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body { 
+    @apply font-jakarta bg-cream text-ink antialiased selection:bg-orange/20 selection:text-orange;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  h1,h2,h3,h4,h5 { font-family: var(--font-syne); @apply tracking-tight; }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--color-cream); }
+  ::-webkit-scrollbar-thumb { background: var(--color-orange); border-radius: 10px; }
+
+  @media (max-width: 1024px) {
+    ::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+    * {
+      -ms-overflow-style: none !important; /* IE and Edge */
+      scrollbar-width: none !important; /* Firefox */
+    }
+  }
+}
+
+@layer components {
+  .btn-primary   { @apply inline-flex items-center justify-center gap-2 bg-ink text-white font-bold rounded-2xl px-6 py-3 text-sm transition-all hover:bg-ink-3 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-ink/25; }
+  .btn-secondary { @apply inline-flex items-center justify-center gap-2 bg-ink-2 text-white font-bold rounded-2xl px-6 py-3 text-sm transition-all hover:bg-ink-4 hover:scale-[1.02] active:scale-[0.98]; }
+  .btn-outline   { @apply inline-flex items-center justify-center gap-2 bg-transparent text-ink border-2 border-cream-3 font-bold rounded-2xl px-6 py-3 text-sm transition-all hover:border-ink hover:scale-[1.02] active:scale-[0.98]; }
+  .btn-ghost     { @apply inline-flex items-center justify-center gap-2 bg-transparent text-ink border-2 border-ink font-bold rounded-2xl px-6 py-3 text-sm transition-all hover:bg-ink hover:text-white; }
+  .btn-sm        { @apply h-10 px-4 text-xs; }
+  .btn-lg        { @apply h-14 px-9 text-base; }
+  .btn-danger    { @apply inline-flex items-center justify-center gap-2 bg-red-600 text-white font-bold rounded-2xl px-6 py-3 text-sm transition-all hover:bg-red-700; }
+  
+  .input-field   { @apply w-full h-12 px-4 rounded-xl border-2 border-cream-2 bg-white text-sm text-ink placeholder-muted outline-none transition-all focus:border-orange focus:bg-white; }
+  .textarea-field{ @apply w-full px-4 py-3 rounded-xl border-2 border-cream-2 bg-white text-sm placeholder-muted outline-none transition-all focus:border-orange focus:bg-white resize-none; }
+  .label-text    { @apply block text-[10px] font-black uppercase tracking-widest text-muted mb-2; }
+  .card          { @apply bg-white border border-cream-3 rounded-3xl p-6 shadow-card hover:shadow-hover transition-all duration-300; }
+  .section-label { @apply inline-block px-3 py-1 bg-orange/10 text-orange text-[10px] font-black uppercase tracking-widest rounded-lg mb-4; }
+  
+  .plan-badge-free     { @apply inline-flex items-center gap-1 bg-gray-100 text-gray-700 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider; }
+  .plan-badge-pro      { @apply inline-flex items-center gap-1 bg-orange-light text-orange text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider; }
+  .plan-badge-pro-plus { @apply inline-flex items-center gap-1 bg-purple-50 text-purple-600 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider; }
+  .lock-overlay  { @apply absolute inset-0 bg-white/70 backdrop-blur-[2px] rounded-3xl flex items-center justify-center flex-col gap-2 z-10 p-6 text-center; }
+  
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .no-screenshot {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  .watermark {
+    pointer-events: none;
+    opacity: 0.05;
+    user-select: none;
+    z-index: 50;
+  }
+
+  .bg-animate-gradient {
+    background-size: 400% 400% !important;
+    animation: gradient 15s ease infinite !important;
+  }
+
+  .animate-float-slow {
+    animation: float 10s ease-in-out infinite;
+  }
+  
+  .animate-float-fast {
+    animation: float 6s ease-in-out infinite;
+  }
+}
+
+@keyframes gradient {
+	0% { background-position: 0% 50%; }
+	50% { background-position: 100% 50%; }
+	100% { background-position: 0% 50%; }
+}
+
+@keyframes float {
+	0% { transform: translateY(0px) rotate(0deg); }
+	50% { transform: translateY(-30px) rotate(5deg); }
+	100% { transform: translateY(0px) rotate(0deg); }
+}
+
+@media (max-width: 640px) {
+  .btn-primary, .btn-secondary, .btn-outline {
+    @apply h-14 rounded-[1.25rem];
+  }
+  .card { @apply p-5 rounded-2xl; }
+  h1 { @apply text-4xl; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, var(--color-cream) 25%, var(--color-cream-2) 50%, var(--color-cream) 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white !important; }
+  .fixed, .sticky { position: relative !important; }
+  #invoice-content { border: none !important; padding: 0 !important; }
+}
+
+.no-print { display: block; }
+
+/* Custom material-style colored spinner animations */
+.spinner {
+  animation: rotator 1.4s linear infinite;
+}
+
+@keyframes rotator {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(270deg); }
+}
+
+.spinner-path {
+  stroke-dasharray: 187;
+  stroke-dashoffset: 0;
+  transform-origin: center;
+  animation:
+    dash 1.4s ease-in-out infinite, 
+    colors 5.6s ease-in-out infinite;
+}
+
+.spinner-solid-path {
+  stroke-dasharray: 187;
+  stroke-dashoffset: 0;
+  transform-origin: center;
+  animation: dash 1.4s ease-in-out infinite;
+}
+
+@keyframes colors {
+  0% { stroke: #4285F4; }
+  25% { stroke: #DE3E35; }
+  50% { stroke: #F7C223; }
+  75% { stroke: #1B9A59; }
+  100% { stroke: #4285F4; }
+}
+
+@keyframes dash {
+ 0% { stroke-dashoffset: 187; }
+ 50% {
+   stroke-dashoffset: 46.75;
+   transform: rotate(135deg);
+ }
+ 100% {
+   stroke-dashoffset: 187;
+   transform: rotate(450deg);
+ }
+}
+
+/* Force Outfit typography and Black theme colors inside Admin Panel */
+#admin-dashboard-container h1,
+#admin-dashboard-container h2,
+#admin-dashboard-container h3,
+#admin-dashboard-container h4,
+#admin-dashboard-container p:not(.admin-exclude),
+#admin-dashboard-container th,
+#admin-dashboard-container td,
+#admin-dashboard-container label,
+#admin-dashboard-container legend {
+  font-family: "Outfit", sans-serif !important;
+  color: #000000 !important;
+}
+
+#admin-dashboard-container,
+#admin-dashboard-container button:not(.admin-exclude) {
+  font-family: "Outfit", sans-serif !important;
+}
+
+#admin-dashboard-container span:not(.admin-exclude):not(.text-white):not([class*="text-emerald"]):not([class*="text-rose"]):not([class*="text-amber"]):not([class*="text-purple"]):not([class*="text-blue"]):not([class*="text-white"]):not([class*="bg-"]):not([class*="rounded-"]) {
+  font-family: "Outfit", sans-serif !important;
+  color: #000000 !important;
+}
+
