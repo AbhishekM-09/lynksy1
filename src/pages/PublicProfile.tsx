@@ -230,7 +230,8 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
         const isDevEnv = host.includes('run.app') || 
                          host.includes('localhost') || 
                          host.includes('aistudio') || 
-                         host.includes('google');
+                         host.includes('google') ||
+                         host.includes('.onrender.com');
         const isSubdomain = !isDevEnv && host.includes('lynksy.app') && host.split('.').length > 2 && !host.startsWith('www.');
         
         if (customDomain && u.plan !== 'PRO_PLUS') {
@@ -251,7 +252,8 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
                                 host.includes('run.app') || 
                                 host === 'lynksy.app' || 
                                 host.includes('aistudio') || 
-                                host.includes('google');
+                                host.includes('google') ||
+                                host.includes('.onrender.com');
 
         if (isMainAppDomain) {
           if (u.plan === 'FREE' && isUPath) {
@@ -264,7 +266,8 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
           const isProduction = !host.includes('localhost') && 
                                !host.includes('run.app') && 
                                !host.includes('aistudio') && 
-                               !host.includes('google');
+                               !host.includes('google') &&
+                               !host.includes('.onrender.com');
           if (isProduction && (u.plan === 'PRO' || u.plan === 'PRO_PLUS')) {
             if (u.plan === 'PRO_PLUS' && u.customDomain) {
               window.location.replace(`https://${u.customDomain}`);
@@ -461,7 +464,8 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
       window.location.hostname.includes('run.app') || 
       window.location.hostname.includes('localhost') || 
       window.location.hostname.includes('aistudio') || 
-      window.location.hostname.includes('google')
+      window.location.hostname.includes('google') ||
+      window.location.hostname.includes('.onrender.com')
     );
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-cream p-6 text-center">
@@ -633,7 +637,8 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
                     window.location.hostname.includes('localhost') ||
                     window.location.hostname.includes('lynksy.app') ||
                     window.location.hostname.includes('run.app') ||
-                    window.location.hostname.includes('aistudio')
+                    window.location.hostname.includes('aistudio') ||
+                    window.location.hostname.includes('.onrender.com')
                   );
                   navigate(isCustomDomain ? '/store' : `/${user.username}/store`);
                 }}
@@ -1154,7 +1159,8 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
                         window.location.hostname.includes('localhost') ||
                         window.location.hostname.includes('lynksy.app') ||
                         window.location.hostname.includes('run.app') ||
-                        window.location.hostname.includes('aistudio')
+                        window.location.hostname.includes('aistudio') ||
+                        window.location.hostname.includes('.onrender.com')
                       );
                       navigate(isCustomDomain ? '/store' : `/${user.username}/store`);
                     }}

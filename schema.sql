@@ -380,9 +380,16 @@ BEGIN
 END;
 $$;
 
--- Deploy Permissive yet Secure Policies representing Developer Sandboxes
--- 1. Select / Read is universally public to allow storefront searches and visitor profiles loader
--- 2. Insert, Update, and Delete are fully enabled for authenticated and anonymous actions avoiding access blocks
+-- Deploy Production-Grade Secure policies with full compatibility.
+-- First, define the administrator check helper function.
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN SECURITY DEFINER AS $$
+BEGIN
+    RETURN (auth.jwt()->>'email')::text = 'abhimattikopp9845@gmail.com';
+END;
+$$ LANGUAGE plpgsql;
+
+-- Drop all permissive sandbox policies on all 33 tables to prepare for production rules.
 DO $$
 DECLARE
     t text;
@@ -402,16 +409,234 @@ BEGIN
           )
     LOOP
         EXECUTE format('DROP POLICY IF EXISTS "Public Read Access" ON %I', t);
-        EXECUTE format('CREATE POLICY "Public Read Access" ON %I FOR SELECT USING (true)', t);
-        
         EXECUTE format('DROP POLICY IF EXISTS "Permissive Write Authenticated" ON %I', t);
-        EXECUTE format('CREATE POLICY "Permissive Write Authenticated" ON %I FOR ALL TO authenticated USING (true) WITH CHECK (true)', t);
-        
         EXECUTE format('DROP POLICY IF EXISTS "Permissive Write Anon" ON %I', t);
-        EXECUTE format('CREATE POLICY "Permissive Write Anon" ON %I FOR ALL TO anon USING (true) WITH CHECK (true)', t);
+        
+        EXECUTE format('DROP POLICY IF EXISTS "Select Policy" ON %I', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Insert Policy" ON %I', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Update Policy" ON %I', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Delete Policy" ON %I', t);
     END LOOP;
 END;
 $$;
+
+-- ─── SECTION 1: PUBLIC READ, OWNER WRITE TABLES ──────────────────
+
+-- 1. users
+CREATE POLICY "Select Policy" ON users FOR SELECT USING (true);
+CREATE POLICY "Insert Policy" ON users FOR INSERT WITH CHECK (id = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON users FOR UPDATE USING (id = auth.uid()::text OR public.is_admin()) WITH CHECK (id = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON users FOR DELETE USING (id = auth.uid()::text OR public.is_admin());
+
+-- 2. profiles
+CREATE POLICY "Select Policy" ON profiles FOR SELECT USING (true);
+CREATE POLICY "Insert Policy" ON profiles FOR INSERT WITH CHECK (id = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON profiles FOR UPDATE USING (id = auth.uid()::text OR public.is_admin()) WITH CHECK (id = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON profiles FOR DELETE USING (id = auth.uid()::text OR public.is_admin());
+
+-- 3. usernames
+CREATE POLICY "Select Policy" ON usernames FOR SELECT USING (true);
+CREATE POLICY "Insert Policy" ON usernames FOR INSERT WITH CHECK ((data->>'uid') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON usernames FOR UPDATE USING ((data->>'uid') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'uid') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON usernames FOR DELETE USING ((data->>'uid') = auth.uid()::text OR public.is_admin());
+
+-- 4. emails
+CREATE POLICY "Select Policy" ON emails FOR SELECT USING ((data->>'uid') = auth.uid()::text OR id = auth.jwt()->>'email' OR public.is_admin());
+CREATE POLICY "Insert Policy" ON emails FOR INSERT WITH CHECK ((data->>'uid') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON emails FOR UPDATE USING ((data->>'uid') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'uid') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON emails FOR DELETE USING ((data->>'uid') = auth.uid()::text OR public.is_admin());
+
+-- 5. custom_domains
+CREATE POLICY "Select Policy" ON custom_domains FOR SELECT USING (true);
+CREATE POLICY "Insert Policy" ON custom_domains FOR INSERT WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON custom_domains FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON custom_domains FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+
+-- 6. domains
+CREATE POLICY "Select Policy" ON domains FOR SELECT USING (true);
+CREATE POLICY "Insert Policy" ON domains FOR INSERT WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON domains FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON domains FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+
+-- 7. links
+CREATE POLICY "Select Policy" ON links FOR SELECT USING (true);
+CREATE POLICY "Insert Policy" ON links FOR INSERT WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON links FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON links FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+
+-- 8. themes
+CREATE POLICY "Select Policy" ON themes FOR SELECT USING (true);
+CREATE POLICY "Insert Policy" ON themes FOR INSERT WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON themes FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON themes FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+
+-- 9. products
+CREATE POLICY "Select Policy" ON products FOR SELECT USING (true);
+CREATE POLICY "Insert Policy" ON products FOR INSERT WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON products FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON products FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+
+-- 10. reviews
+CREATE POLICY "Select Policy" ON reviews FOR SELECT USING (true);
+CREATE POLICY "Insert Policy" ON reviews FOR INSERT WITH CHECK (true);
+CREATE POLICY "Update Policy" ON reviews FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON reviews FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+
+-- 11. short_links
+CREATE POLICY "Select Policy" ON short_links FOR SELECT USING (true);
+CREATE POLICY "Insert Policy" ON short_links FOR INSERT WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON short_links FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON short_links FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+
+-- 12. url_shortener
+CREATE POLICY "Select Policy" ON url_shortener FOR SELECT USING (true);
+CREATE POLICY "Insert Policy" ON url_shortener FOR INSERT WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON url_shortener FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON url_shortener FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+
+
+-- ─── SECTION 2: PRIVATE READ, OWNER/ADMIN MANAGE TABLES ──────────
+
+-- 13. orders
+CREATE POLICY "Select Policy" ON orders FOR SELECT USING (
+    (data->>'userId') = auth.uid()::text OR 
+    (data->>'creatorId') = auth.uid()::text OR 
+    (data->>'buyerEmail') = auth.jwt()->>'email' OR 
+    public.is_admin()
+);
+CREATE POLICY "Insert Policy" ON orders FOR INSERT WITH CHECK (true);
+CREATE POLICY "Update Policy" ON orders FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON orders FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+
+-- 14. downloads
+CREATE POLICY "Select Policy" ON downloads FOR SELECT USING (
+    EXISTS (
+        SELECT 1 FROM orders 
+        WHERE orders.id = (downloads.data->>'orderId') 
+          AND (
+              (orders.data->>'userId') = auth.uid()::text OR 
+              (orders.data->>'creatorId') = auth.uid()::text OR 
+              (orders.data->>'buyerEmail') = auth.jwt()->>'email'
+          )
+    ) OR public.is_admin()
+);
+CREATE POLICY "Insert Policy" ON downloads FOR INSERT WITH CHECK (true);
+CREATE POLICY "Update Policy" ON downloads FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Delete Policy" ON downloads FOR DELETE USING (public.is_admin());
+
+-- 15. payouts
+CREATE POLICY "Select Policy" ON payouts FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON payouts FOR INSERT WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON payouts FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Delete Policy" ON payouts FOR DELETE USING (public.is_admin());
+
+-- 16. invoices
+CREATE POLICY "Select Policy" ON invoices FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON invoices FOR INSERT WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON invoices FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON invoices FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+
+-- 17. subscriptions
+CREATE POLICY "Select Policy" ON subscriptions FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON subscriptions FOR INSERT WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON subscriptions FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON subscriptions FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+
+-- 18. renewal_history
+CREATE POLICY "Select Policy" ON renewal_history FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON renewal_history FOR INSERT WITH CHECK (public.is_admin());
+CREATE POLICY "Update Policy" ON renewal_history FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Delete Policy" ON renewal_history FOR DELETE USING (public.is_admin());
+
+-- 19. payment_history
+CREATE POLICY "Select Policy" ON payment_history FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON payment_history FOR INSERT WITH CHECK (public.is_admin());
+CREATE POLICY "Update Policy" ON payment_history FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Delete Policy" ON payment_history FOR DELETE USING (public.is_admin());
+
+-- 20. page_views
+CREATE POLICY "Select Policy" ON page_views FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON page_views FOR INSERT WITH CHECK (true);
+CREATE POLICY "Update Policy" ON page_views FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Delete Policy" ON page_views FOR DELETE USING (public.is_admin());
+
+-- 21. click_events
+CREATE POLICY "Select Policy" ON click_events FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON click_events FOR INSERT WITH CHECK (true);
+CREATE POLICY "Update Policy" ON click_events FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Delete Policy" ON click_events FOR DELETE USING (public.is_admin());
+
+-- 22. analytics_daily
+CREATE POLICY "Select Policy" ON analytics_daily FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON analytics_daily FOR INSERT WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON analytics_daily FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON analytics_daily FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+
+-- 23. short_link_clicks
+CREATE POLICY "Select Policy" ON short_link_clicks FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON short_link_clicks FOR INSERT WITH CHECK (true);
+CREATE POLICY "Update Policy" ON short_link_clicks FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Delete Policy" ON short_link_clicks FOR DELETE USING (public.is_admin());
+
+-- 24. tip_records
+CREATE POLICY "Select Policy" ON tip_records FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON tip_records FOR INSERT WITH CHECK (true);
+CREATE POLICY "Update Policy" ON tip_records FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Delete Policy" ON tip_records FOR DELETE USING (public.is_admin());
+
+-- 25. tips
+CREATE POLICY "Select Policy" ON tips FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON tips FOR INSERT WITH CHECK (true);
+CREATE POLICY "Update Policy" ON tips FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Delete Policy" ON tips FOR DELETE USING (public.is_admin());
+
+-- 26. email_subscribers
+CREATE POLICY "Select Policy" ON email_subscribers FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON email_subscribers FOR INSERT WITH CHECK (true);
+CREATE POLICY "Update Policy" ON email_subscribers FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON email_subscribers FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+
+-- 27. leads
+CREATE POLICY "Select Policy" ON leads FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON leads FOR INSERT WITH CHECK (true);
+CREATE POLICY "Update Policy" ON leads FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON leads FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+
+-- 28. reports
+CREATE POLICY "Select Policy" ON reports FOR SELECT USING (public.is_admin());
+CREATE POLICY "Insert Policy" ON reports FOR INSERT WITH CHECK (true);
+CREATE POLICY "Update Policy" ON reports FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Delete Policy" ON reports FOR DELETE USING (public.is_admin());
+
+-- 29. announcements
+CREATE POLICY "Select Policy" ON announcements FOR SELECT USING (true);
+CREATE POLICY "Insert Policy" ON announcements FOR INSERT WITH CHECK (public.is_admin());
+CREATE POLICY "Update Policy" ON announcements FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Delete Policy" ON announcements FOR DELETE USING (public.is_admin());
+
+-- 30. app_settings
+CREATE POLICY "Select Policy" ON app_settings FOR SELECT USING (true);
+CREATE POLICY "Insert Policy" ON app_settings FOR INSERT WITH CHECK (public.is_admin());
+CREATE POLICY "Update Policy" ON app_settings FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Delete Policy" ON app_settings FOR DELETE USING (public.is_admin());
+
+-- 31. admin_logs
+CREATE POLICY "Select Policy" ON admin_logs FOR SELECT USING (public.is_admin());
+CREATE POLICY "Insert Policy" ON admin_logs FOR INSERT WITH CHECK (public.is_admin());
+CREATE POLICY "Update Policy" ON admin_logs FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Delete Policy" ON admin_logs FOR DELETE USING (public.is_admin());
+
+-- 32. settings
+CREATE POLICY "Select Policy" ON settings FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON settings FOR INSERT WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON settings FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON settings FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+
+-- 33. ai_usage
+CREATE POLICY "Select Policy" ON ai_usage FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON ai_usage FOR INSERT WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON ai_usage FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON ai_usage FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
 
 -- ─── 13. FILE STORAGE PROVISIONS ───────────────────────────────
 

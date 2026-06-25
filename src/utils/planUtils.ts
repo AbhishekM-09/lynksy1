@@ -61,7 +61,8 @@ export const getUserUrls = (user: Partial<User> | null) => {
   const isProduction = !host.includes('localhost') && 
                        !host.includes('run.app') && 
                        !host.includes('aistudio') && 
-                       !host.includes('google')
+                       !host.includes('google') &&
+                       !host.includes('.onrender.com')
   const baseHost = 'lynksy.app'
   
   // Pretty labels for UI (branding)

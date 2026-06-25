@@ -143,6 +143,7 @@ export default function App() {
                        host.includes('run.app') || 
                        host.includes('aistudio') || 
                        host.includes('google') ||
+                       host.includes('.onrender.com') ||
                        isMainAppPath
 
   // Domain-based routing logic
@@ -159,7 +160,7 @@ export default function App() {
       username = parts[0]
     }
     
-    const customDomain = testDomain || (!isSubdomain && !mainDomains.includes(host) && !host.includes('run.app') ? host : '')
+    const customDomain = testDomain || (!isSubdomain && !mainDomains.includes(host) && !host.includes('run.app') && !host.includes('.onrender.com') ? host : '')
 
     if (username || customDomain) {
       return (
