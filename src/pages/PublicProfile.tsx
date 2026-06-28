@@ -120,6 +120,26 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
     setSubscribing(true)
     try {
       await addEmailSubscriber(user!.uid, user!.username, emailVal, 'public_profile')
+      
+      // Trigger welcome automation email via server
+      try {
+        fetch('/api/subscriber-welcome-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: emailVal,
+            creatorId: user!.uid,
+            creatorUsername: user!.username,
+            creatorName: user!.displayName || user!.username || 'Creator',
+            welcomeEmailActive: user!.welcomeEmailActive ?? false,
+            welcomeEmailSubject: user!.welcomeEmailSubject,
+            welcomeEmailBody: user!.welcomeEmailBody
+          })
+        }).catch(err => console.warn('[Subscriber Welcome Email] API dispatch warning:', err))
+      } catch (e) {
+        console.warn('[Subscriber Welcome Email] Dispatch exception:', e)
+      }
+
       setSubscribedSuccess(true)
       setSubscriberEmail('')
       toast.success('Successfully subscribed!')
@@ -256,8 +276,8 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
                                 host.includes('.onrender.com');
 
         if (isMainAppDomain) {
-          if (u.plan === 'FREE' && isUPath) {
-            // Redirect FREE users from /u/username to /username
+          if (isUPath) {
+            // Redirect all users from /u/username to /username
             window.location.replace(`/${u.username}`);
             return;
           }
@@ -276,12 +296,6 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
               window.location.replace(`https://${u.username}.lynksy.app`);
               return;
             }
-          }
-
-          // In dev environment, we keep those users on /u/ for functionality
-          if (!isUPath && (u.plan === 'PRO' || u.plan === 'PRO_PLUS')) {
-            window.location.replace(`/u/${u.username}`);
-            return;
           }
         }
 
@@ -405,6 +419,9 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
   const showSupportCard = isUpiSetup
 
   const filteredLinks = links.filter(link => {
+    if (!link.title || link.title.trim() === '') {
+      return false
+    }
     if (link.type === 'UPI' || link.type === 'upi_tip') {
       return !showSupportCard
     }
@@ -441,18 +458,11 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
     // Deep link for mobile
     const upiLink = `upi://pay?pa=${targetUpiId}&pn=${encodeURIComponent(targetDisplayName)}&am=${activeAmount}&cu=INR&tn=${encodeURIComponent(`Tip for ${targetDisplayName} via Lynksy`)}`
     
-    // Check if mobile
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-    
-    if (isMobile) {
-      window.location.href = upiLink
-    } else {
-      setGeneratedUpiLink(upiLink)
-      setModalUpiId(targetUpiId)
-      setModalDisplayName(targetDisplayName)
-      setModalAmount(activeAmount)
-      setIsUpiModalOpen(true)
-    }
+    setGeneratedUpiLink(upiLink)
+    setModalUpiId(targetUpiId)
+    setModalDisplayName(targetDisplayName)
+    setModalAmount(activeAmount)
+    setIsUpiModalOpen(true)
   }
 
   if (loading) {
@@ -705,7 +715,7 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
           </div>
 
           {/* Email Subscription Form for Pookie Theme */}
-          {user && user.emailFormActive && (user.plan === 'PRO' || user.plan === 'PRO_PLUS') && (
+          {user && user.emailFormActive && (
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -714,7 +724,7 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
                 background: pookieTheme.cardBg,
                 borderColor: pookieTheme.cardBorder.split('solid ').pop() || '#eee',
                 boxShadow: pookieTheme.cardShadow,
-                border: user.plan === 'PRO_PLUS' ? `2px dashed ${pookieTheme.accentColor}` : undefined
+                border: (user.plan === 'PRO_PLUS' || user.plan === 'PRO') ? `2px dashed ${pookieTheme.accentColor}` : undefined
               }}
             >
               <div className="absolute -top-10 -right-10 w-32 h-32 blur-3xl opacity-10" style={{ background: pookieTheme.accentColor }} />
@@ -912,7 +922,7 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-sm" style={{ background: `${pookieTheme.accentColor}20`, color: pookieTheme.accentColor }}>🛍️</div>
                    <h3 className="text-xs font-black uppercase tracking-widest" style={{ color: pookieTheme.handleColor, opacity: 0.7 }}>Premium Store</h3>
                 </div>
-                <div className="grid gap-6">
+                <div className="grid grid-cols-2 gap-3 sm:gap-5">
                    {products.map((p, i) => (
                       <motion.div
                         key={p.id}
@@ -924,42 +934,57 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
                           trackClick(user.uid, { id: p.id, title: p.title })
                           setPreviewProduct(p)
                         }}
-                        className="bg-white rounded-[32px] overflow-hidden border shadow-xl shadow-pink-500/5 group cursor-pointer"
-                        style={{ borderColor: pookieTheme.cardBorder.split('solid ').pop() || '#eee' }}
+                        className="rounded-2xl overflow-hidden group cursor-pointer flex flex-col h-full border"
+                        style={{ 
+                          background: pookieTheme.cardBg,
+                          borderColor: pookieTheme.cardBorder.split('solid ').pop() || '#eee',
+                          boxShadow: pookieTheme.cardShadow
+                        }}
                       >
-                         <div className="aspect-[16/9] relative overflow-hidden">
-                             {p.imageUrl ? (
-                               <img src={p.imageUrl} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
+                         <div className="aspect-[4/3] relative overflow-hidden">
+                             {p.imageUrl || p.coverImageUrl || p.image ? (
+                               <img src={p.imageUrl || p.coverImageUrl || p.image} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
                              ) : (
                                <div className="w-full h-full bg-pink-50 flex items-center justify-center text-pink-200">
-                                  <ShoppingBag size={48} />
+                                  <ShoppingBag size={32} />
                                </div>
                              )}
-                             <div className="absolute top-4 left-4">
-                                <span className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-pink-500 shadow-sm">
+                             <div className="absolute top-2 left-2">
+                                <span 
+                                  className="backdrop-blur-sm px-2 py-0.5 rounded-full text-[7px] sm:text-[9px] font-black uppercase tracking-widest shadow-sm"
+                                  style={{ 
+                                    background: pookieTheme.socialBg || 'rgba(255,255,255,0.9)', 
+                                    color: pookieTheme.accentColor 
+                                  }}
+                                >
                                    {p.category || 'Digital'}
                                 </span>
                              </div>
                          </div>
-                         <div className="p-5 flex items-center justify-between gap-4">
+                         <div className="p-2 sm:p-3.5 flex flex-col flex-1 justify-between gap-1.5">
                             <div className="min-w-0">
-                               <h4 className="font-bold text-lg truncate mb-0.5" style={{ color: pookieTheme.nameColor }}>{p.title}</h4>
-                               <p className="text-pink-600 font-black text-xl">{formatPrice(p.price)}</p>
+                               <h4 className="font-bold text-xs sm:text-sm md:text-base truncate mb-0.5" style={{ color: pookieTheme.nameColor }}>{p.title}</h4>
+                               <p className="text-[8px] sm:text-xs opacity-60 line-clamp-1" style={{ color: pookieTheme.bioColor }}>
+                                 {p.shortDesc || p.description || "Premium digital access"}
+                               </p>
                             </div>
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setSelectedProduct(p)
-                                setIsCheckoutOpen(true)
-                              }}
-                              className="px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg transition-transform hover:scale-105"
-                              style={{ 
-                                background: pookieTheme.accentColor,
-                                color: isLightColor(pookieTheme.accentColor) ? '#000000' : '#FFFFFF'
-                              }}
-                            >
-                               Get ↗
-                            </button>
+                            <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-cream-2/40 w-full">
+                               <p className="font-black text-xs sm:text-base" style={{ color: pookieTheme.accentColor }}>{formatPrice(p.price)}</p>
+                               <button 
+                                 onClick={(e) => {
+                                   e.stopPropagation()
+                                   setSelectedProduct(p)
+                                   setIsCheckoutOpen(true)
+                                 }}
+                                 className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl font-black text-[8px] sm:text-[10px] uppercase tracking-widest shadow-md transition-all hover:scale-105 shrink-0"
+                                 style={{ 
+                                   background: pookieTheme.accentColor,
+                                   color: isLightColor(pookieTheme.accentColor) ? '#000000' : '#FFFFFF'
+                                 }}
+                               >
+                                  Get ↗
+                               </button>
+                            </div>
                          </div>
                       </motion.div>
                    ))}
@@ -988,6 +1013,87 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
           product={selectedProduct} 
           creatorUid={user.uid}
         />
+
+        {/* UPI Tip QR Modal for Desktop Users in Pookie Theme */}
+        <AnimatePresence>
+          {isUpiModalOpen && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+              onClick={() => setIsUpiModalOpen(false)}
+            >
+              <motion.div 
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="bg-white rounded-[28px] max-w-sm w-full p-6 text-center shadow-2xl border border-cream-2 relative text-ink"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button 
+                  onClick={() => setIsUpiModalOpen(false)}
+                  className="absolute top-4 right-4 text-ink hover:opacity-60 font-bold text-lg"
+                >
+                  ✕
+                </button>
+                <h3 className="text-xl font-black font-syne text-ink mb-1">
+                  Support {modalDisplayName || 'Creator'}
+                </h3>
+                <p className="text-[11px] text-muted mb-6 uppercase tracking-wider font-bold">
+                  Scan with any UPI app to pay
+                </p>
+
+                <div className="bg-cream-1 p-4 rounded-2xl inline-block border border-cream-2/40 mb-6 shadow-inner mx-auto">
+                  <QRCodeCanvas 
+                    value={generatedUpiLink} 
+                    size={200} 
+                    className="mx-auto rounded-lg"
+                  />
+                </div>
+
+                <div className="text-2xl font-black text-ink mb-1">
+                  ₹{modalAmount}
+                </div>
+                
+                <p className="text-xs font-bold text-muted mb-4 truncate max-w-full px-2" title={modalUpiId}>
+                  UPI ID: {modalUpiId}
+                </p>
+
+                {/* Badges of major UPI apps */}
+                <div className="flex justify-center items-center gap-3 py-3 border-t border-cream-2 mt-4">
+                  {['GPay', 'PhonePe', 'Paytm', 'BHIM'].map(app => (
+                    <span 
+                      key={app} 
+                      className="px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-md border border-cream-2 text-ink bg-cream-1"
+                    >
+                      {app}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="flex gap-2 mt-4">
+                  <a 
+                    href={generatedUpiLink}
+                    className="flex-1 bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-black py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                  >
+                    Open UPI App
+                  </a>
+                  <button 
+                    onClick={() => {
+                      const upiId = modalUpiId || ''
+                      navigator.clipboard.writeText(upiId)
+                      toast.success('UPI ID copied!')
+                    }}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 px-4 rounded-xl transition-all"
+                  >
+                    Copy UPI ID
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <AnimatePresence>
           {previewProduct && (
@@ -1260,7 +1366,7 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
           </AnimatePresence>
 
           {/* Email Subscription Form */}
-          {user && user.emailFormActive && (user.plan === 'PRO' || user.plan === 'PRO_PLUS') && (
+          {user && user.emailFormActive && (
             <div className="pt-6">
               <div 
                 className={cn(
@@ -1268,9 +1374,9 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
                   theme.isGlass && "backdrop-blur-md"
                 )}
                 style={{ 
-                  borderColor: user.plan === 'PRO_PLUS' ? effectiveAccentColor : `${effectiveButtonColor}20`, 
+                  borderColor: (user.plan === 'PRO_PLUS' || user.plan === 'PRO') ? effectiveAccentColor : `${effectiveButtonColor}20`, 
                   borderRadius: `${upiCardRadius}px`,
-                  boxShadow: user.plan === 'PRO_PLUS' ? `0 0 25px ${effectiveAccentColor}30` : undefined,
+                  boxShadow: (user.plan === 'PRO_PLUS' || user.plan === 'PRO') ? `0 0 25px ${effectiveAccentColor}30` : undefined,
                   background: standardCardBg
                 }}
               >
@@ -1618,24 +1724,24 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
                       
                       <div className="px-1 flex-1">
                         <h4 
-                          className="font-black text-xs sm:text-lg lg:text-xl tracking-tight leading-tight mb-0.5 sm:mb-1 group-hover:text-orange transition-colors line-clamp-1"
+                          className="font-black text-xs sm:text-base tracking-tight leading-tight mb-0.5 sm:mb-1 group-hover:text-orange transition-colors line-clamp-1"
                           style={{ color: standardCardTextColor }}
                         >
                           {p.title || p.name}
                         </h4>
-                        <p className="text-[9px] sm:text-[12px] opacity-70 line-clamp-1 sm:line-clamp-2 font-medium leading-relaxed mb-1" style={{ color: standardCardMutedColor }}>
+                        <p className="text-[9px] sm:text-xs opacity-70 line-clamp-1 sm:line-clamp-2 font-medium leading-relaxed mb-1" style={{ color: standardCardMutedColor }}>
                           {p.shortDesc || p.description || "Get instant access to this premium digital product. High-quality content guaranteed."}
                         </p>
                       </div>
                     </div>
  
                     <div 
-                      className="relative mt-auto p-2 sm:p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between z-10 border-t border-cream-2/50 bg-cream-1/10 gap-2 w-full"
+                      className="relative mt-auto p-1.5 sm:p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between z-10 border-t border-cream-2/50 bg-cream-1/10 gap-1.5 w-full"
                       style={{ borderRadius: '0 0 16px 16px' }}
                     >
                        <div className="flex flex-col text-left">
-                          <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-widest opacity-50" style={{ color: standardCardMutedColor }}>Premium Access</span>
-                          <p className="text-sm sm:text-2xl font-black leading-none mt-0.5" style={{ color: effectiveAccentColor }}>
+                          <span className="text-[6px] sm:text-[8px] font-black uppercase tracking-widest opacity-50" style={{ color: standardCardMutedColor }}>Premium Access</span>
+                          <p className="text-xs sm:text-lg font-black leading-none mt-0.5" style={{ color: effectiveAccentColor }}>
                             {formatPrice(p.price)}
                           </p>
                        </div>
@@ -1643,11 +1749,11 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
                        <motion.button
                          whileHover={{ scale: 1.05 }}
                          whileTap={{ scale: 0.95 }}
-                         className="flex items-center justify-center gap-1.5 px-3 sm:px-6 py-1.5 sm:py-3 font-black text-[8px] sm:text-xs uppercase tracking-widest transition-all text-white shadow-lg"
+                         className="flex items-center justify-center gap-1 px-2 sm:px-3 py-1 sm:py-2 font-black text-[8px] sm:text-[10px] uppercase tracking-widest transition-all text-white shadow-md shrink-0"
                          style={{ 
                            background: effectiveButtonColor,
                            color: effectiveButtonTextColor,
-                           borderRadius: '12px'
+                           borderRadius: '8px'
                          }}
                          onClick={(e) => {
                            e.stopPropagation()
@@ -1655,7 +1761,7 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
                            setIsCheckoutOpen(true)
                          }}
                        >
-                         <span>Buy Now</span> <ArrowRight className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 group-hover:translate-x-1 transition-transform" />
+                         <span>Buy Now</span> <ArrowRight className="w-2 sm:w-2.5 h-2 sm:h-2.5 group-hover:translate-x-0.5 transition-transform" />
                        </motion.button>
                     </div>
                   </motion.div>
@@ -1730,16 +1836,24 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
                   ))}
                 </div>
 
-                <button 
-                  onClick={() => {
-                    const upiId = modalUpiId || ''
-                    navigator.clipboard.writeText(upiId)
-                    toast.success('UPI ID copied!')
-                  }}
-                  className="mt-4 w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 px-4 rounded-xl transition-all"
-                >
-                  Copy UPI ID
-                </button>
+                <div className="flex gap-2 mt-4">
+                  <a 
+                    href={generatedUpiLink}
+                    className="flex-1 bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-black py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                  >
+                    Open UPI App
+                  </a>
+                  <button 
+                    onClick={() => {
+                      const upiId = modalUpiId || ''
+                      navigator.clipboard.writeText(upiId)
+                      toast.success('UPI ID copied!')
+                    }}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 px-4 rounded-xl transition-all"
+                  >
+                    Copy UPI ID
+                  </button>
+                </div>
               </motion.div>
             </motion.div>
           )}

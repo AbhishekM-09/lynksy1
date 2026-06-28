@@ -441,7 +441,7 @@ export default function StoreDashboard() {
 
   // Total amount of requested/processed cashouts
   const totalWithdrawnRupees = withdrawals
-    .filter(w => w.status === 'paid' || w.status === 'pending')
+    .filter(w => w.status === 'paid' || w.status === 'completed' || w.status === 'pending')
     .reduce((sum, w) => sum + w.amount, 0)
 
   const availableBalanceRupees = Math.max(0, lifetimeEarningsRupees - totalWithdrawnRupees)
@@ -469,7 +469,7 @@ export default function StoreDashboard() {
       type: 'Withdrawal' as const,
       description: `Disbursal withdrawal to ${w.paymentMethod === 'upi' ? `UPI (${w.upiId})` : `${w.bankName || 'Bank'}`}`,
       amount: -w.amount,
-      status: w.status === 'paid' ? ('Received' as const) : (w.status === 'pending' ? ('Pending' as const) : ('Failed' as const)),
+      status: (w.status === 'paid' || w.status === 'completed') ? ('Completed' as const) : (w.status === 'pending' ? ('Pending' as const) : ('Failed' as const)),
       date: w.createdAt?.toDate ? w.createdAt.toDate() : new Date(),
     }))
   ].sort((a, b) => b.date.getTime() - a.date.getTime())
@@ -1280,11 +1280,11 @@ export default function StoreDashboard() {
                               <td className="py-4 text-right pr-5">
                                 <span className={cn(
                                   "inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider select-none border",
-                                  w.status === 'paid' 
+                                  (w.status === 'paid' || w.status === 'completed') 
                                     ? "bg-green-100 text-green-700 border-green-200" 
                                     : (w.status === 'pending' ? "bg-amber-100 text-amber-700 border-amber-200" : "bg-red-100 text-red-700 border-red-200")
                                 )}>
-                                  {w.status === 'paid' ? 'received' : w.status}
+                                  {(w.status === 'paid' || w.status === 'completed') ? 'completed' : w.status}
                                 </span>
                               </td>
                             </tr>
@@ -1335,11 +1335,11 @@ export default function StoreDashboard() {
                           <div className="text-right">
                             <span className={cn(
                               "inline-flex px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-wider select-none border",
-                              w.status === 'paid' 
+                              (w.status === 'paid' || w.status === 'completed') 
                                 ? "bg-green-100 text-green-700 border-green-200" 
                                 : (w.status === 'pending' ? "bg-amber-100 text-amber-700 border-amber-200" : "bg-red-100 text-red-700 border-red-200")
                             )}>
-                              {w.status === 'paid' ? 'received' : w.status}
+                              {(w.status === 'paid' || w.status === 'completed') ? 'completed' : w.status}
                             </span>
                           </div>
                         </div>

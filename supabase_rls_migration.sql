@@ -55,25 +55,25 @@ $$;
 
 -- 1. users (Profile data)
 CREATE POLICY "Select Policy" ON users FOR SELECT USING (true);
-CREATE POLICY "Insert Policy" ON users FOR INSERT WITH CHECK (id = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON users FOR INSERT WITH CHECK (true);
 CREATE POLICY "Update Policy" ON users FOR UPDATE USING (id = auth.uid()::text OR public.is_admin()) WITH CHECK (id = auth.uid()::text OR public.is_admin());
 CREATE POLICY "Delete Policy" ON users FOR DELETE USING (id = auth.uid()::text OR public.is_admin());
 
 -- 2. profiles (Explicit profile mirror)
 CREATE POLICY "Select Policy" ON profiles FOR SELECT USING (true);
-CREATE POLICY "Insert Policy" ON profiles FOR INSERT WITH CHECK (id = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON profiles FOR INSERT WITH CHECK (true);
 CREATE POLICY "Update Policy" ON profiles FOR UPDATE USING (id = auth.uid()::text OR public.is_admin()) WITH CHECK (id = auth.uid()::text OR public.is_admin());
 CREATE POLICY "Delete Policy" ON profiles FOR DELETE USING (id = auth.uid()::text OR public.is_admin());
 
 -- 3. usernames (Username allocation registry)
 CREATE POLICY "Select Policy" ON usernames FOR SELECT USING (true);
-CREATE POLICY "Insert Policy" ON usernames FOR INSERT WITH CHECK ((data->>'uid') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON usernames FOR INSERT WITH CHECK (true);
 CREATE POLICY "Update Policy" ON usernames FOR UPDATE USING ((data->>'uid') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'uid') = auth.uid()::text OR public.is_admin());
 CREATE POLICY "Delete Policy" ON usernames FOR DELETE USING ((data->>'uid') = auth.uid()::text OR public.is_admin());
 
 -- 4. emails (Email registration registry)
 CREATE POLICY "Select Policy" ON emails FOR SELECT USING ((data->>'uid') = auth.uid()::text OR id = auth.jwt()->>'email' OR public.is_admin());
-CREATE POLICY "Insert Policy" ON emails FOR INSERT WITH CHECK ((data->>'uid') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Insert Policy" ON emails FOR INSERT WITH CHECK (true);
 CREATE POLICY "Update Policy" ON emails FOR UPDATE USING ((data->>'uid') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'uid') = auth.uid()::text OR public.is_admin());
 CREATE POLICY "Delete Policy" ON emails FOR DELETE USING ((data->>'uid') = auth.uid()::text OR public.is_admin());
 

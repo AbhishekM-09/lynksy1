@@ -4,8 +4,8 @@ import { usePlan } from '@/hooks/usePlan'
 import { getEmailSubscribers, deleteEmailSubscriber, updateUser } from '@/firebase/firestore'
 import { EmailSubscriber } from '@/types'
 import { 
-  Mail, Settings, Sparkles, Plus, Loader2, Copy, Trash2, Search,
-  Download, BarChart3, TrendingUp, Calendar, AlertCircle, CheckCircle,
+  Mail, Settings, Sparkles, Loader2, Copy, Trash2, Search,
+  Download, TrendingUp, Calendar, AlertCircle, CheckCircle,
   ChevronLeft, ChevronRight, Lock, Eye, FileSpreadsheet
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
@@ -16,9 +16,19 @@ import {
 import { motion, AnimatePresence } from 'motion/react'
 import { getFallbackAvatarGradient, getFallbackAvatarInitials } from '@/utils/formatters'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const getSafeDate = (val: any): Date | null => {
+  if (!val) return null
+  if (typeof val.toDate === 'function') return val.toDate()
+  if (val instanceof Date) return val
+  if (val.seconds) return new Date(val.seconds * 1000)
+  const d = new Date(val)
+  return isNaN(d.getTime()) ? null : d
+}
+
 export default function EmailCollectionPage() {
   const { user, updateUserField } = useAuthStore()
-  const { isFree, isPro, isProPlus, gate } = usePlan()
+  const { isPro, isProPlus, gate } = usePlan()
 
   // Tab state: 'setup' | 'welcome' | 'subscribers'
   const [activeTab, setActiveTab] = useState<'setup' | 'welcome' | 'subscribers'>('setup')
@@ -48,7 +58,7 @@ export default function EmailCollectionPage() {
 
   // Load Subscribers
   const fetchSubs = useCallback(async () => {
-    if (!user?.uid || isFree) return
+    if (!user?.uid) return
     setIsLoadingSubs(true)
     try {
       const data = await getEmailSubscribers(user.uid)
@@ -59,7 +69,7 @@ export default function EmailCollectionPage() {
     } finally {
       setIsLoadingSubs(false)
     }
-  }, [user?.uid, isFree])
+  }, [user?.uid])
 
   useEffect(() => {
     fetchSubs()
@@ -199,11 +209,14 @@ export default function EmailCollectionPage() {
     }
 
     const headers = ['Email Address', 'Date Joined', 'Source']
-    const rows = subscribers.map(s => [
-      s.email,
-      s.subscribedAt ? s.subscribedAt.toDate().toLocaleString() : '',
-      s.source || 'public_profile'
-    ])
+    const rows = subscribers.map(s => {
+      const d = getSafeDate(s.subscribedAt)
+      return [
+        s.email,
+        d ? d.toLocaleString() : '',
+        s.source || 'public_profile'
+      ]
+    })
 
     const csvContent = "data:text/csv;charset=utf-8," 
       + [headers, ...rows].map(e => e.map(val => `"${val.replace(/"/g, '""')}"`).join(",")).join("\n")
@@ -233,12 +246,15 @@ export default function EmailCollectionPage() {
 
     try {
       const worksheet = XLSX.utils.json_to_sheet(
-        subscribers.map((s, idx) => ({
-          'S.No': idx + 1,
-          'Email Address': s.email,
-          'Date Joined': s.subscribedAt ? s.subscribedAt.toDate().toLocaleString() : 'N/A',
-          'Source': s.source || 'Public Profile'
-        }))
+        subscribers.map((s, idx) => {
+          const d = getSafeDate(s.subscribedAt)
+          return {
+            'S.No': idx + 1,
+            'Email Address': s.email,
+            'Date Joined': d ? d.toLocaleString() : 'N/A',
+            'Source': s.source || 'Public Profile'
+          }
+        })
       )
       const workbook = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Subscribers')
@@ -271,8 +287,14 @@ export default function EmailCollectionPage() {
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
-  const subsToday = subscribers.filter(s => s.subscribedAt?.toDate() >= oneDayAgo).length
-  const subsThisMonth = subscribers.filter(s => s.subscribedAt?.toDate() >= thirtyDaysAgo).length
+  const subsToday = subscribers.filter(s => {
+    const d = getSafeDate(s.subscribedAt)
+    return d ? d >= oneDayAgo : false
+  }).length
+  const subsThisMonth = subscribers.filter(s => {
+    const d = getSafeDate(s.subscribedAt)
+    return d ? d >= thirtyDaysAgo : false
+  }).length
   
   // Calculate Growth Rate % (Month over Month relative progress)
   const previousMonthCount = totalCount - subsThisMonth
@@ -284,8 +306,9 @@ export default function EmailCollectionPage() {
   const chartData = []
   const groupData: Record<string, number> = {}
   subscribers.forEach(sub => {
-    if (sub.subscribedAt) {
-      const dateStr = sub.subscribedAt.toDate().toISOString().split('T')[0]
+    const d = getSafeDate(sub.subscribedAt)
+    if (d) {
+      const dateStr = d.toISOString().split('T')[0]
       groupData[dateStr] = (groupData[dateStr] || 0) + 1
     }
   })
@@ -300,72 +323,7 @@ export default function EmailCollectionPage() {
     })
   }
 
-  // LOCKED STATE FOR FREE USERS
-  if (isFree) {
-    return (
-      <div className="max-w-4xl mx-auto p-4 md:p-8">
-        <div className="bg-gradient-to-b from-[#18181B] to-[#0D0D0F] border border-white/5 rounded-[2.5rem] p-8 md:p-14 text-center shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)] relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-orange via-purple-500 to-orange" />
-          
-          {/* Ambient Glow */}
-          <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[300px] h-[300px] bg-orange/10 rounded-full blur-[120px] pointer-events-none" />
-
-          {/* Locked Icon Wrapper */}
-          <div className="w-20 h-20 bg-orange/10 border border-orange/20 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner relative animate-pulse">
-            <Mail size={36} className="text-orange" />
-            <div className="absolute bottom-1 right-1 bg-ink border border-white/10 w-6 h-6 rounded-lg flex items-center justify-center shadow-lg">
-              <Lock size={12} className="text-orange" />
-            </div>
-          </div>
-
-          <h2 className="text-2xl md:text-3xl font-black text-white font-syne tracking-tight mb-4">
-            Email Collection <span className="text-orange">&</span> Lead Generation
-          </h2>
-          <p className="text-sm md:text-base text-white/50 max-w-lg mx-auto mb-10 leading-relaxed font-sans">
-            Build, nurture, and grow your audience. Collect subscriber emails directly from your public Lynksy page and manage them from a clean dashboard.
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto text-left mb-10">
-            <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 hover:bg-white/[0.04] transition-all">
-              <div className="text-orange bg-orange/10 w-8 h-8 rounded-lg flex items-center justify-center mb-3">
-                <Plus size={16} />
-              </div>
-              <p className="text-xs font-bold text-white mb-1">Interactive Page forms</p>
-              <p className="text-[10px] text-white/40 leading-relaxed">Let profile visitors join your newsletter in one quick tap.</p>
-            </div>
-
-            <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 hover:bg-white/[0.04] transition-all">
-              <div className="text-[#6B3FA0] bg-[#6B3FA0]/10 w-8 h-8 rounded-lg flex items-center justify-center mb-3">
-                <BarChart3 size={16} />
-              </div>
-              <p className="text-xs font-bold text-white mb-1">Subscriber dashboard</p>
-              <p className="text-[10px] text-white/40 leading-relaxed">Search, paginated arrays, analytics reports and welcome series.</p>
-            </div>
-
-            <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 hover:bg-white/[0.04] transition-all">
-              <div className="text-emerald-500 bg-emerald-500/10 w-8 h-8 rounded-lg flex items-center justify-center mb-3">
-                <Download size={16} />
-              </div>
-              <p className="text-xs font-bold text-white mb-1">Export Anywhere</p>
-              <p className="text-[10px] text-white/40 leading-relaxed">Download your lead list directly as clean CSV or Excel files.</p>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button
-              onClick={() => gate('canCollectEmails', () => {})}
-              className="w-full sm:w-auto px-8 py-3.5 bg-orange hover:bg-orange/90 text-white rounded-2xl font-bold font-syne text-sm transition-all shadow-lg hover:shadow-orange/20 active:scale-95"
-            >
-              Unlock with Pro
-            </button>
-            <p className="text-xs text-white/30">Requires Pro subscription</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // ACTIVE INTERFACE (PRO / PRO+)
+  // ACTIVE INTERFACE (PRO / PRO+ / FREE)
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
       {/* Header Banner */}
@@ -1120,9 +1078,12 @@ export default function EmailCollectionPage() {
 
                           {/* Joined Date Column */}
                           <td className="py-4 px-6 text-xs text-zinc-500">
-                            {item.subscribedAt ? item.subscribedAt.toDate().toLocaleDateString(undefined, { 
-                              year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                            }) : 'Just now'}
+                            {(() => {
+                              const d = getSafeDate(item.subscribedAt)
+                              return d ? d.toLocaleDateString(undefined, { 
+                                year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                              }) : 'Just now'
+                            })()}
                           </td>
 
                           {/* Source Column */}
@@ -1205,9 +1166,12 @@ export default function EmailCollectionPage() {
                               {item.source === 'public_profile' ? 'Profile Form' : item.source || 'profile'}
                             </span>
                             <span className="text-[10px] text-zinc-500">
-                              {item.subscribedAt ? item.subscribedAt.toDate().toLocaleDateString(undefined, { 
-                                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                              }) : 'Just now'}
+                              {(() => {
+                                const d = getSafeDate(item.subscribedAt)
+                                return d ? d.toLocaleDateString(undefined, { 
+                                  month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                                }) : 'Just now'
+                              })()}
                             </span>
                           </div>
                         </div>

@@ -36,7 +36,7 @@ export default function ProductDetail() {
         
         if (u.plan !== 'PRO' && u.plan !== 'PRO_PLUS') {
           toast.error("The creator's store is currently unavailable.")
-          navigate(`/u/${username}`)
+          navigate(`/${username}`)
           return
         }
         
@@ -45,7 +45,7 @@ export default function ProductDetail() {
         const p = await getProductById(u.uid, productId)
         if (!p || !p.isActive) {
           toast.error('Product not found')
-          navigate(`/u/${username}/store`)
+          navigate(`/${username}/store`)
           return
         }
         setProduct(p)
@@ -74,7 +74,7 @@ export default function ProductDetail() {
   return (
     <div className="min-h-screen bg-cream selection:bg-orange selection:text-white pb-20">
       <nav className="fixed top-0 left-0 right-0 z-40 px-6 py-4 bg-white/80 backdrop-blur-xl border-b border-cream-3 flex items-center justify-between">
-        <Link to={`/u/${username}/store`} className="flex items-center gap-3 group">
+        <Link to={`/${username}/store`} className="flex items-center gap-3 group">
           <div className="w-10 h-10 rounded-full bg-cream flex items-center justify-center group-hover:bg-orange/10 transition-colors">
             <ArrowLeft className="text-muted group-hover:text-orange" size={20} />
           </div>
@@ -212,7 +212,7 @@ export default function ProductDetail() {
                     <p className="text-sm font-black uppercase tracking-tight">{creator.displayName}</p>
                  </div>
               </div>
-              <Link to={`/u/${username}`} className="px-4 py-2 bg-white border border-cream-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-orange transition-colors">Profile</Link>
+              <Link to={`/${username}`} className="px-4 py-2 bg-white border border-cream-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-orange transition-colors">Profile</Link>
            </div>
         </div>
       </main>
@@ -228,7 +228,7 @@ export default function ProductDetail() {
                         product={p} 
                         creatorName={creator.displayName} 
                         username={creator.username} 
-                        onBuyClick={(p) => navigate(`/u/${username}/store/${p.id}`)}
+                        onBuyClick={(p) => navigate(`/${username}/store/${p.id}`)}
                         compact
                     />
                  </div>

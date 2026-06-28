@@ -15,7 +15,7 @@ import {
   User, Mail, Shield, CreditCard, 
   Trash2, CheckCircle2, AlertTriangle, Crown,
   Fingerprint, Loader2, Globe, FileText, Download,
-  Copy, ExternalLink, Lock
+  Copy, ExternalLink, Lock, ChevronDown
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useDebounce } from '@/hooks/useDebounce'
@@ -55,6 +55,7 @@ export default function SettingsPage() {
   }, [user])
 
   const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [showPersonalInfoSection, setShowPersonalInfoSection] = useState(false)
   const [showChangePasswordForm, setShowChangePasswordForm] = useState(false)
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' })
 
@@ -344,8 +345,6 @@ export default function SettingsPage() {
     }
   }, [user?.username, username])
 
-  const host = window.location.host
-  const prefix = plan === 'FREE' ? `${host}/` : `${host}/u/`
   const debouncedUsername = useDebounce(username, 500)
   const [isUsernameValid, setIsUsernameValid] = useState<boolean | null>(null)
   const [isCheckingUsername, setIsCheckingUsername] = useState(false)
@@ -531,7 +530,7 @@ export default function SettingsPage() {
         <div className="space-y-6 sm:space-y-8 animate-in slide-in-from-bottom-2 duration-300">
           
           {/* Public URL Box */}
-          <section className="bg-white border border-cream-3 rounded-3xl p-5 sm:p-8 space-y-6 shadow-sm hover:shadow-md transition-all duration-300">
+          <section className="bg-white border border-cream-3 rounded-3xl p-4 sm:p-6 md:p-8 space-y-6 shadow-sm hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-3 border-b border-cream-2 pb-4 sm:pb-5">
               <div className="p-2 sm:p-2.5 bg-orange/10 text-orange rounded-xl shrink-0 shadow-inner">
                 <Globe size={18} />
@@ -552,24 +551,24 @@ export default function SettingsPage() {
                       <p className="text-[9px] font-black uppercase text-orange tracking-widest mb-1">
                         {plan === 'FREE' ? 'Standard URL' : (user?.customDomain ? 'Custom Domain' : 'Personal Subdomain')}
                       </p>
-                      <p className="text-base sm:text-xl font-bold text-white font-mono truncate w-full">
+                      <p className="text-sm sm:text-base md:text-xl font-bold text-white font-mono break-all md:truncate w-full">
                         {displayUrl}
                       </p>
                     </div>
-                    <div className="flex gap-2 w-full md:w-auto shrink-0">
+                    <div className="flex flex-col xs:flex-row gap-2 w-full md:w-auto shrink-0">
                       <button 
                         onClick={() => {
                           navigator.clipboard.writeText(profileUrl)
                           toast.success('Link copied!')
                         }}
-                        className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 bg-white text-ink hover:bg-orange hover:text-white font-bold py-2 sm:py-2.5 text-xs rounded-xl px-4 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                        className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 bg-white text-ink hover:bg-orange hover:text-white font-bold py-2 sm:py-2.5 text-xs rounded-xl px-4 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center"
                       >
                         <Copy size={13} /> Copy Link
                       </button>
                       <a 
                         href={profileUrl} 
                         target="_blank" 
-                        className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 border border-white/20 text-white hover:bg-white/10 font-bold py-2 sm:py-2.5 text-xs rounded-xl px-4 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 border border-white/20 text-white hover:bg-white/10 font-bold py-2 sm:py-2.5 text-xs rounded-xl px-4 transition-all hover:scale-[1.02] active:scale-[0.98] text-center"
                       >
                         <ExternalLink size={13} /> Visit Site
                       </a>
@@ -581,30 +580,32 @@ export default function SettingsPage() {
               <div className="space-y-2.5 pt-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-ink-3">Edit Lynksy Username</label>
                 
-                <div className="flex flex-col md:flex-row gap-2.5">
+                <div className="flex flex-col sm:flex-row gap-2.5">
                   <div className="relative flex-1 min-w-0">
                     <div className="flex items-center border-2 border-cream-2 rounded-2xl bg-cream-1/30 focus-within:border-ink focus-within:bg-white transition-all overflow-hidden">
-                      <span className="px-3 py-4 text-muted font-black text-[10px] sm:text-xs bg-cream-2/70 border-r border-cream-2 whitespace-nowrap overflow-hidden text-ellipsis inline-block max-w-[130px] xs:max-w-[170px] sm:max-w-[220px] md:max-w-xs align-middle select-all" title={prefix}>
-                        {prefix}
+                      <span className="px-3 py-3.5 sm:py-4 text-muted font-black text-[11px] sm:text-xs bg-cream-2/70 border-r border-cream-2 whitespace-nowrap select-none shrink-0">
+                        lynksy.app/
                       </span>
-                      <input 
-                        className="flex-1 px-4 py-3 bg-transparent outline-none text-sm font-bold text-ink min-w-0"
-                        value={username}
-                        placeholder="your_name"
-                        onChange={e => setUsername(String(e.target.value || '').toLowerCase().replace(/[^a-z0-9_.-]/g, ''))}
-                      />
-                      {isCheckingUsername && (
-                        <div className="px-3 shrink-0">
-                          <Loader2 size={14} className="animate-spin text-muted" />
-                        </div>
-                      )}
+                      <div className="flex-1 flex items-center relative min-w-0">
+                        <input 
+                          className="w-full px-3 py-3 bg-transparent outline-none text-sm font-bold text-ink min-w-0"
+                          value={username}
+                          placeholder="your_name"
+                          onChange={e => setUsername(String(e.target.value || '').toLowerCase().replace(/[^a-z0-9_.-]/g, ''))}
+                        />
+                        {isCheckingUsername && (
+                          <div className="px-3 shrink-0">
+                            <Loader2 size={14} className="animate-spin text-muted" />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                   
                   <button 
                     disabled={isSaving || username === (user?.username || '') || isUsernameValid === false || isCheckingUsername || isLimitReached}
                     onClick={handleUpdateUsername}
-                    className="w-full md:w-auto h-12 md:h-14 px-6 font-black text-xs uppercase tracking-widest text-white bg-ink rounded-2xl hover:bg-orange transition-all duration-200 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer shrink-0"
+                    className="w-full sm:w-auto h-12 sm:h-14 px-6 font-black text-xs uppercase tracking-widest text-white bg-ink rounded-2xl hover:bg-orange transition-all duration-200 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer shrink-0"
                   >
                     {isSaving ? <Loader2 size={14} className="animate-spin" /> : 'Save Username'}
                   </button>
@@ -638,247 +639,263 @@ export default function SettingsPage() {
             <CustomDomainSettings />
           </section>
 
-          {/* Personal Info Box */}
-          <section className="bg-white border border-cream-3 rounded-3xl p-5 sm:p-8 space-y-6 shadow-sm hover:shadow-md transition-all duration-300">
-            <div className="flex items-center gap-3 border-b border-cream-2 pb-4 sm:pb-5">
-              <div className="p-2 sm:p-2.5 bg-orange/10 text-orange rounded-xl shrink-0 shadow-inner">
-                <User size={18} />
-              </div>
-              <div>
-                <h3 className="text-base sm:text-lg font-black text-ink">Personal Info</h3>
-                <p className="text-xs text-muted">Primary verified credentials for this account.</p>
-              </div>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-widest text-ink-3">Verified Email Address</label>
-                <div className="relative">
-                   <Mail className="absolute left-4.5 top-1/2 -translate-y-1/2 text-muted-2" size={14} />
-                   <input className="w-full h-14 pl-12 pr-4 rounded-2xl border-2 border-cream-2 bg-cream-1/30 text-muted font-bold text-sm cursor-not-allowed outline-none" value={user?.email} disabled />
-                </div>
-              </div>
-              
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-widest text-ink-3">Account Verification</label>
-                <div className="flex items-center gap-2.5 h-14 px-4.5 bg-emerald-50 text-emerald-700 rounded-2xl border border-emerald-100 font-bold text-sm sm:text-sm">
-                   <CheckCircle2 size={18} className="text-emerald-500 shrink-0" /> 
-                   <span className="uppercase tracking-wide text-xs font-black">Verified Lynksy Creator</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Sign-in Methods Box */}
-          <section className="bg-white border border-cream-3 rounded-3xl p-5 sm:p-8 space-y-6 shadow-sm hover:shadow-md transition-all duration-300">
-            <div className="flex items-center justify-between border-b border-cream-2 pb-4 sm:pb-5">
+          {/* Combined Personal Info & Sign-in Methods Accordion */}
+          <section className="bg-white border border-cream-3 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+            <button 
+              onClick={() => setShowPersonalInfoSection(!showPersonalInfoSection)}
+              className="w-full text-left p-5 sm:p-8 flex items-center justify-between gap-4 hover:bg-cream-1/10 transition-colors focus:outline-none cursor-pointer"
+            >
               <div className="flex items-center gap-3">
                 <div className="p-2 sm:p-2.5 bg-orange/10 text-orange rounded-xl shrink-0 shadow-inner">
-                  <Shield size={18} />
+                  <User size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base sm:text-lg font-black text-ink">Sign-in Methods</h3>
-                  <p className="text-xs text-muted">Secure access vectors for system entry authentication.</p>
+                  <h3 className="text-base sm:text-lg font-black text-ink">Personal Info & Sign-in Methods</h3>
+                  <p className="text-xs text-muted">Manage your account credentials, verification state, and login gateways.</p>
                 </div>
               </div>
-            </div>
+              <div className="text-muted hover:text-ink shrink-0 p-1">
+                <ChevronDown 
+                  size={20} 
+                  className={`transition-transform duration-300 ${showPersonalInfoSection ? 'rotate-180 text-orange' : 'rotate-0 text-muted'}`}
+                />
+              </div>
+            </button>
 
-            <div className="space-y-4">
-              {/* Google Provider Details */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4.5 bg-cream-2 rounded-2xl border border-cream-3">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0 border border-cream-2">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                      <path d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z" fill="#FBBC05"/>
-                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                    </svg>
+            {showPersonalInfoSection && (
+              <div className="px-5 pb-5 sm:px-8 sm:pb-8 pt-0 border-t border-cream-2 space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                
+                {/* Personal Info Content block */}
+                <div className="space-y-6 pt-6">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-orange bg-orange/10 px-2.5 py-1 rounded-lg">Verified Identity Details</p>
                   </div>
-                  <div>
-                    <p className="text-sm font-black text-ink">Google Sign-In Connection</p>
-                    <p className="text-[10px] text-muted tracking-tight">
-                      {isGoogleLinked ? 'Connected successfully' : 'Not linked to this login'}
-                    </p>
+
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-ink-3">Verified Email Address</label>
+                      <div className="relative">
+                         <Mail className="absolute left-4.5 top-1/2 -translate-y-1/2 text-muted-2" size={14} />
+                         <input className="w-full h-14 pl-12 pr-4 rounded-2xl border-2 border-cream-2 bg-cream-1/30 text-muted font-bold text-sm cursor-not-allowed outline-none" value={user?.email} disabled />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-ink-3">Account Verification</label>
+                      <div className="flex items-center gap-2.5 h-14 px-4.5 bg-emerald-50 text-emerald-700 rounded-2xl border border-emerald-100 font-bold text-sm sm:text-sm">
+                         <CheckCircle2 size={18} className="text-emerald-500 shrink-0" /> 
+                         <span className="uppercase tracking-wide text-xs font-black">Verified Lynksy Creator</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                {isGoogleLinked ? (
-                  <div className="flex flex-wrap md:flex-nowrap items-center gap-2 shrink-0 w-full md:w-auto justify-start md:justify-end">
-                    <div className="flex items-center justify-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-100 font-bold w-full md:w-auto">
-                      <CheckCircle2 size={13} className="text-emerald-500" />
-                      <span className="text-[9px] font-black uppercase tracking-widest">Active Link</span>
-                    </div>
-                    {isPasswordSet && (
-                      <button 
-                        onClick={handleUnlinkGoogle}
-                        disabled={isSaving}
-                        className="h-10 text-[9px] px-3 rounded-xl bg-red-50 border border-red-100 text-red-600 hover:bg-red-100 hover:text-red-700 font-black uppercase tracking-widest transition-all cursor-pointer w-full md:w-auto text-center"
-                      >
-                        {isSaving ? <Loader2 size={12} className="animate-spin" /> : 'Unlink'}
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <button 
-                    onClick={handleLinkGoogle}
-                    disabled={isSaving}
-                    className="w-full md:w-auto h-11 text-[10px] px-4 rounded-xl bg-white border border-cream-3 text-ink hover:border-orange hover:text-orange transition-all font-black uppercase tracking-widest cursor-pointer shadow-sm text-center flex justify-center items-center"
-                  >
-                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : 'Link Google Account'}
-                  </button>
-                )}
-              </div>
 
-              {/* Password Provider Details */}
-              <div className="flex flex-col gap-4.5 p-4.5 bg-cream-2 rounded-2xl border border-cream-3">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0 border border-cream-2">
-                      <Lock size={18} className="text-ink" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-ink">Direct Login Keyphrase</p>
-                      <p className="text-[10px] tracking-tight">
-                        {isPasswordSet ? (
-                          <span className="text-emerald-700 font-bold flex items-center gap-1">
-                            ✅ Direct login credentials active
-                          </span>
-                        ) : (
-                          <span className="text-muted">Password login currently disabled</span>
-                        )}
-                      </p>
-                    </div>
+                {/* Sign-in Methods Content block */}
+                <div className="space-y-6 pt-8 border-t border-cream-2">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-orange bg-orange/10 px-2.5 py-1 rounded-lg">Secure Auth Credentials</p>
                   </div>
-                  {isPasswordSet ? (
-                    <div className="flex flex-wrap md:flex-nowrap items-center gap-2 shrink-0 w-full md:w-auto">
-                      <button 
-                        onClick={() => setShowChangePasswordForm(!showChangePasswordForm)}
-                        className="w-full md:w-auto h-11 text-[10px] px-4 rounded-xl bg-white border border-cream-3 text-ink hover:border-orange hover:text-orange transition-all font-black uppercase tracking-widest cursor-pointer text-center flex justify-center items-center"
-                      >
-                        {showChangePasswordForm ? 'Cancel' : 'Change Password'}
-                      </button>
-                      <button 
-                        onClick={handleResetPassword}
-                        disabled={isSaving}
-                        className="w-full md:w-auto h-11 text-[10px] px-4 rounded-xl bg-white border border-cream-3 text-ink hover:border-orange hover:text-orange transition-all font-black uppercase tracking-widest cursor-pointer text-center flex justify-center items-center"
-                      >
-                        {isSaving ? <Loader2 size={12} className="animate-spin" /> : 'Send Reset Link'}
-                      </button>
-                      {isGoogleLinked && (
+
+                  <div className="space-y-4">
+                    {/* Google Provider Details */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4.5 bg-cream-2 rounded-2xl border border-cream-3">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0 border border-cream-2">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                            <path d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z" fill="#FBBC05"/>
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-ink">Google Sign-In Connection</p>
+                          <p className="text-[10px] text-muted tracking-tight">
+                            {isGoogleLinked ? 'Connected successfully' : 'Not linked to this login'}
+                          </p>
+                        </div>
+                      </div>
+                      {isGoogleLinked ? (
+                        <div className="flex flex-wrap md:flex-nowrap items-center gap-2 shrink-0 w-full md:w-auto justify-start md:justify-end">
+                          <div className="flex items-center justify-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-100 font-bold w-full md:w-auto">
+                            <CheckCircle2 size={13} className="text-emerald-500" />
+                            <span className="text-[9px] font-black uppercase tracking-widest">Active Link</span>
+                          </div>
+                          {isPasswordSet && (
+                            <button 
+                              onClick={handleUnlinkGoogle}
+                              disabled={isSaving}
+                              className="h-10 text-[9px] px-3 rounded-xl bg-red-50 border border-red-100 text-red-600 hover:bg-red-100 hover:text-red-700 font-black uppercase tracking-widest transition-all cursor-pointer w-full md:w-auto text-center"
+                            >
+                              {isSaving ? <Loader2 size={12} className="animate-spin" /> : 'Unlink'}
+                            </button>
+                          )}
+                        </div>
+                      ) : (
                         <button 
-                          onClick={handleUnlinkPassword}
+                          onClick={handleLinkGoogle}
                           disabled={isSaving}
-                          className="w-full md:w-auto h-11 text-[10px] px-3.5 rounded-xl bg-red-50 border border-red-100 text-red-600 hover:bg-red-100 transition-all font-black uppercase tracking-widest cursor-pointer text-center flex justify-center items-center"
+                          className="w-full md:w-auto h-11 text-[10px] px-4 rounded-xl bg-white border border-cream-3 text-ink hover:border-orange hover:text-orange transition-all font-black uppercase tracking-widest cursor-pointer shadow-sm text-center flex justify-center items-center"
                         >
-                          {isSaving ? <Loader2 size={12} className="animate-spin" /> : 'Deactivate'}
+                          {isSaving ? <Loader2 size={14} className="animate-spin" /> : 'Link Google Account'}
                         </button>
                       )}
                     </div>
-                  ) : (
-                    <button 
-                      onClick={() => setShowPasswordForm(!showPasswordForm)}
-                      className="w-full md:w-auto h-11 text-[10px] px-4 rounded-xl bg-white border-2 border-orange text-orange hover:bg-orange/5 transition-all font-black uppercase tracking-widest cursor-pointer text-center flex justify-center items-center"
-                    >
-                      {showPasswordForm ? 'Cancel Set' : 'Set Account Password'}
-                    </button>
-                  )}
+
+                    {/* Password Provider Details */}
+                    <div className="flex flex-col gap-4.5 p-4.5 bg-cream-2 rounded-2xl border border-cream-3">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0 border border-cream-2">
+                            <Lock size={18} className="text-ink" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-ink">Direct Login Keyphrase</p>
+                            <p className="text-[10px] tracking-tight">
+                              {isPasswordSet ? (
+                                <span className="text-emerald-700 font-bold flex items-center gap-1">
+                                  ✅ Direct login credentials active
+                                </span>
+                              ) : (
+                                <span className="text-muted">Password login currently disabled</span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        {isPasswordSet ? (
+                          <div className="flex flex-wrap md:flex-nowrap items-center gap-2 shrink-0 w-full md:w-auto">
+                            <button 
+                              onClick={() => setShowChangePasswordForm(!showChangePasswordForm)}
+                              className="w-full md:w-auto h-11 text-[10px] px-4 rounded-xl bg-white border border-cream-3 text-ink hover:border-orange hover:text-orange transition-all font-black uppercase tracking-widest cursor-pointer text-center flex justify-center items-center"
+                            >
+                              {showChangePasswordForm ? 'Cancel' : 'Change Password'}
+                            </button>
+                            <button 
+                              onClick={handleResetPassword}
+                              disabled={isSaving}
+                              className="w-full md:w-auto h-11 text-[10px] px-4 rounded-xl bg-white border border-cream-3 text-ink hover:border-orange hover:text-orange transition-all font-black uppercase tracking-widest cursor-pointer text-center flex justify-center items-center"
+                            >
+                              {isSaving ? <Loader2 size={12} className="animate-spin" /> : 'Send Reset Link'}
+                            </button>
+                            {isGoogleLinked && (
+                              <button 
+                                onClick={handleUnlinkPassword}
+                                disabled={isSaving}
+                                className="w-full md:w-auto h-11 text-[10px] px-3.5 rounded-xl bg-red-50 border border-red-100 text-red-600 hover:bg-red-100 transition-all font-black uppercase tracking-widest cursor-pointer text-center flex justify-center items-center"
+                              >
+                                {isSaving ? <Loader2 size={12} className="animate-spin" /> : 'Deactivate'}
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <button 
+                            onClick={() => setShowPasswordForm(!showPasswordForm)}
+                            className="w-full md:w-auto h-11 text-[10px] px-4 rounded-xl bg-white border-2 border-orange text-orange hover:bg-orange/5 transition-all font-black uppercase tracking-widest cursor-pointer text-center flex justify-center items-center"
+                          >
+                            {showPasswordForm ? 'Cancel Set' : 'Set Account Password'}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Set Password Form */}
+                      {showPasswordForm && !isPasswordSet && (
+                        <div className="pt-4 border-t border-cream-3 space-y-4">
+                          <div className="space-y-1.5">
+                             <label className="text-[9px] font-black uppercase tracking-widest text-muted">Choose New Password</label>
+                             <input 
+                               type="password" 
+                               className="w-full h-11 px-4 rounded-xl border-2 border-cream-3 bg-white text-sm outline-none outline-0"
+                               value={passwords.new}
+                               onChange={e => setPasswords({...passwords, new: e.target.value})}
+                             />
+                             <PasswordStrength password={passwords.new} />
+                          </div>
+                          <div className="space-y-1.5">
+                             <label className="text-[9px] font-black uppercase tracking-widest text-muted">Confirm New Password</label>
+                             <input 
+                               type="password" 
+                               className="w-full h-11 px-4 rounded-xl border-2 border-cream-3 bg-white text-sm outline-none"
+                               value={passwords.confirm}
+                               onChange={e => setPasswords({...passwords, confirm: e.target.value})}
+                             />
+                          </div>
+                          <button 
+                            onClick={handleSetPassword}
+                            disabled={isSaving || passwords.new.length < 8}
+                            className="w-full btn-primary h-11 text-xs gap-2 shrink-0 cursor-pointer"
+                          >
+                            {isSaving ? <Loader2 size={14} className="animate-spin" /> : 'Activate Credentials'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Change Password Form */}
+                      {showChangePasswordForm && isPasswordSet && (
+                        <div className="pt-4 border-t border-cream-3 space-y-4">
+                          <div className="space-y-1.5">
+                             <label className="text-[9px] font-black uppercase tracking-widest text-muted">Current Auth Key</label>
+                             <input 
+                               type="password" 
+                               className="w-full h-11 px-4 rounded-xl border-2 border-cream-3 bg-white text-sm outline-none"
+                               value={passwords.current}
+                               onChange={e => setPasswords({...passwords, current: e.target.value})}
+                             />
+                          </div>
+                          <div className="space-y-1.5">
+                             <label className="text-[9px] font-black uppercase tracking-widest text-muted">Choose New Security Password</label>
+                             <input 
+                               type="password" 
+                               className="w-full h-11 px-4 rounded-xl border-2 border-cream-3 bg-white text-sm outline-none"
+                               value={passwords.new}
+                               onChange={e => setPasswords({...passwords, new: e.target.value})}
+                             />
+                             <PasswordStrength password={passwords.new} />
+                          </div>
+                          <div className="space-y-1.5">
+                             <label className="text-[9px] font-black uppercase tracking-widest text-muted">Confirm New Security Password</label>
+                             <input 
+                               type="password" 
+                               className="w-full h-11 px-4 rounded-xl border-2 border-cream-3 bg-white text-sm outline-none"
+                               value={passwords.confirm}
+                               onChange={e => setPasswords({...passwords, confirm: e.target.value})}
+                             />
+                          </div>
+                          <button 
+                            onClick={handleChangePassword}
+                            disabled={isSaving || passwords.new.length < 8}
+                            className="w-full btn-primary h-11 text-xs gap-2 cursor-pointer"
+                          >
+                            {isSaving ? <Loader2 size={14} className="animate-spin" /> : 'Update Active Password'}
+                          </button>
+                        </div>
+                      )}
+
+                      <AuthAlert message={authError} onDismiss={() => setAuthError('')} />
+                    </div>
+
+                    {/* Multi-session check */}
+                    <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-4 p-4 bg-orange-50/45 border border-orange-100 rounded-2xl">
+                       <div className="flex items-center gap-3">
+                         <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-cream-3 shrink-0">
+                           <Fingerprint size={18} className="text-orange" />
+                         </div>
+                         <div className="min-w-0 text-left">
+                           <p className="text-xs font-black text-ink">Active Device Session</p>
+                           <p className="text-[9px] text-orange tracking-tight uppercase font-black opacity-60">Connected live</p>
+                         </div>
+                       </div>
+                       <button 
+                         onClick={() => signOutUser().then(() => { clearAuth(); navigate('/login'); })}
+                         className="text-[10px] font-black uppercase tracking-widest text-orange hover:underline cursor-pointer shrink-0 self-start xs:self-auto"
+                       >
+                         Log out device
+                       </button>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Set Password Form */}
-                {showPasswordForm && !isPasswordSet && (
-                  <div className="pt-4 border-t border-cream-3 space-y-4">
-                    <div className="space-y-1.5">
-                       <label className="text-[9px] font-black uppercase tracking-widest text-muted">Choose New Password</label>
-                       <input 
-                         type="password" 
-                         className="w-full h-11 px-4 rounded-xl border-2 border-cream-3 bg-white text-sm outline-none outline-0"
-                         value={passwords.new}
-                         onChange={e => setPasswords({...passwords, new: e.target.value})}
-                       />
-                       <PasswordStrength password={passwords.new} />
-                    </div>
-                    <div className="space-y-1.5">
-                       <label className="text-[9px] font-black uppercase tracking-widest text-muted">Confirm New Password</label>
-                       <input 
-                         type="password" 
-                         className="w-full h-11 px-4 rounded-xl border-2 border-cream-3 bg-white text-sm outline-none"
-                         value={passwords.confirm}
-                         onChange={e => setPasswords({...passwords, confirm: e.target.value})}
-                       />
-                    </div>
-                    <button 
-                      onClick={handleSetPassword}
-                      disabled={isSaving || passwords.new.length < 8}
-                      className="w-full btn-primary h-11 text-xs gap-2 shrink-0 cursor-pointer"
-                    >
-                      {isSaving ? <Loader2 size={14} className="animate-spin" /> : 'Activate Credentials'}
-                    </button>
-                  </div>
-                )}
-
-                {/* Change Password Form */}
-                {showChangePasswordForm && isPasswordSet && (
-                  <div className="pt-4 border-t border-cream-3 space-y-4">
-                    <div className="space-y-1.5">
-                       <label className="text-[9px] font-black uppercase tracking-widest text-muted">Current Auth Key</label>
-                       <input 
-                         type="password" 
-                         className="w-full h-11 px-4 rounded-xl border-2 border-cream-3 bg-white text-sm outline-none"
-                         value={passwords.current}
-                         onChange={e => setPasswords({...passwords, current: e.target.value})}
-                       />
-                    </div>
-                    <div className="space-y-1.5">
-                       <label className="text-[9px] font-black uppercase tracking-widest text-muted">Choose New Security Password</label>
-                       <input 
-                         type="password" 
-                         className="w-full h-11 px-4 rounded-xl border-2 border-cream-3 bg-white text-sm outline-none"
-                         value={passwords.new}
-                         onChange={e => setPasswords({...passwords, new: e.target.value})}
-                       />
-                       <PasswordStrength password={passwords.new} />
-                    </div>
-                    <div className="space-y-1.5">
-                       <label className="text-[9px] font-black uppercase tracking-widest text-muted">Confirm New Security Password</label>
-                       <input 
-                         type="password" 
-                         className="w-full h-11 px-4 rounded-xl border-2 border-cream-3 bg-white text-sm outline-none"
-                         value={passwords.confirm}
-                         onChange={e => setPasswords({...passwords, confirm: e.target.value})}
-                       />
-                    </div>
-                    <button 
-                      onClick={handleChangePassword}
-                      disabled={isSaving || passwords.new.length < 8}
-                      className="w-full btn-primary h-11 text-xs gap-2 cursor-pointer"
-                    >
-                      {isSaving ? <Loader2 size={14} className="animate-spin" /> : 'Update Active Password'}
-                    </button>
-                  </div>
-                )}
-
-                <AuthAlert message={authError} onDismiss={() => setAuthError('')} />
               </div>
-
-              {/* Multi-session check */}
-              <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-4 p-4 bg-orange-50/45 border border-orange-100 rounded-2xl">
-                 <div className="flex items-center gap-3">
-                   <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-cream-3 shrink-0">
-                     <Fingerprint size={18} className="text-orange" />
-                   </div>
-                   <div className="min-w-0 text-left">
-                     <p className="text-xs font-black text-ink">Active Device Session</p>
-                     <p className="text-[9px] text-orange tracking-tight uppercase font-black opacity-60">Connected live</p>
-                   </div>
-                 </div>
-                 <button 
-                   onClick={() => signOutUser().then(() => { clearAuth(); navigate('/login'); })}
-                   className="text-[10px] font-black uppercase tracking-widest text-orange hover:underline cursor-pointer shrink-0 self-start xs:self-auto"
-                 >
-                   Log out device
-                 </button>
-              </div>
-            </div>
+            )}
           </section>
         </div>
       )}

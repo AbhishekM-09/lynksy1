@@ -836,6 +836,128 @@ async function start() {
     }
   });
 
+  // Welcome Email via Brevo API on Newsletter Subscription
+  app.post('/api/subscriber-welcome-email', async (req, res) => {
+    try {
+      const { email, creatorId, creatorUsername, creatorName, welcomeEmailActive, welcomeEmailSubject, welcomeEmailBody } = req.body;
+      if (!email) {
+        return res.status(400).json({ success: false, error: "Recipient email is required" });
+      }
+
+      if (!welcomeEmailActive) {
+        return res.json({ success: true, message: "Welcome email campaign is inactive for this creator." });
+      }
+
+      const emailLower = String(email).toLowerCase().trim();
+      const creatorUsernameStr = String(creatorUsername || '').trim();
+      const creatorNameStr = String(creatorName || creatorUsernameStr || 'Creator').trim();
+      
+      const subjectStr = String(welcomeEmailSubject || 'Welcome to my circle! 👋').trim();
+      const bodyStr = String(welcomeEmailBody || 'Thank you so much for subscribing to my newsletter updates! Stay tuned for more premium announcements, custom digital products, and exciting news straight to your inbox.').trim();
+
+      const profileUrl = `${process.env.APP_URL || 'https://lynksy.app'}/${creatorUsernameStr}`;
+
+      const welcomeHtml = `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 24px; background-color: #fcfbf9; border: 1px solid #e2dad0; border-radius: 24px;">
+  <!-- Header Branding -->
+  <div style="text-align: center; margin-bottom: 24px;">
+    <h1 style="color: #ff6b00; font-family: 'Syne', sans-serif; font-weight: 900; font-size: 28px; margin: 0; text-transform: uppercase; letter-spacing: -0.03em;">
+      ${creatorNameStr}
+    </h1>
+    <p style="font-size: 11px; font-weight: 700; color: #71717a; text-transform: uppercase; letter-spacing: 0.15em; margin: 4px 0 0 0;">
+      Newsletter Subscriber Welcome
+    </p>
+  </div>
+
+  <!-- Hero Content -->
+  <div style="background-color: #ffffff; border: 1px solid #f0eae1; border-radius: 20px; padding: 32px; box-shadow: 0 4px 20px rgba(255, 107, 0, 0.01);">
+    <h2 style="font-size: 20px; font-weight: 800; color: #1c1816; margin-top: 0; margin-bottom: 16px;">
+      Hello! 👋
+    </h2>
+    
+    <!-- Creator Custom Message -->
+    <div style="font-size: 14px; line-height: 1.6; color: #4b443e; margin: 0 0 24px 0; white-space: pre-wrap;">
+      ${bodyStr}
+    </div>
+
+    <!-- Call to Action -->
+    <div style="text-align: center; margin-top: 28px; border-top: 1px solid #f5eff5; padding-top: 24px;">
+      <p style="font-size: 13px; color: #71717a; margin-bottom: 16px;">Visit my public profile to see my latest links, store items, and more:</p>
+      <a href="${profileUrl}" style="background-color: #ff6b00; color: #ffffff; font-weight: 800; font-size: 13px; text-decoration: none; padding: 14px 28px; border-radius: 14px; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block; box-shadow: 0 4px 14px rgba(255, 107, 0, 0.2);">
+        View my Profile
+      </a>
+    </div>
+  </div>
+
+  <!-- Help Desk Support -->
+  <div style="margin-top: 24px; text-align: center; font-size: 11px; color: #a1a1aa;">
+    <p>You received this because you subscribed to <strong>@${creatorUsernameStr}</strong> on Lynksy.</p>
+  </div>
+
+  <!-- Footer Info -->
+  <hr style="border: 0; border-top: 1px solid #e2dad0; margin: 24px 0;" />
+  <div style="text-align: center; font-size: 10px; color: #a1a1aa; line-height: 1.5;">
+    <p style="margin: 0; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #71717a;">Powered by Lynksy</p>
+    <p style="margin: 4px 0 0 0;">Secured Creator Infrastructure & Direct Monetization Ecosystem</p>
+  </div>
+</div>
+`;
+
+      const apiKey = process.env.BREVO_API_KEY;
+
+      if (apiKey && apiKey !== 'placeholder' && apiKey.trim() !== '') {
+        // Send email via Brevo API
+        const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'accept': 'application/json',
+            'api-key': apiKey.trim(),
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify({
+            sender: {
+              name: `${creatorNameStr} via Lynksy`,
+              email: "welcome@lynksy.app"
+            },
+            to: [
+              {
+                email: emailLower,
+                name: "Subscriber"
+              }
+            ],
+            subject: subjectStr,
+            htmlContent: welcomeHtml
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Brevo API responded with status ${response.status}: ${errText}`);
+        }
+
+        console.log(`[Brevo API] Subscriber welcome email successfully sent to ${emailLower} (creator: @${creatorUsernameStr}).`);
+        return res.json({ success: true, method: 'brevo_api' });
+      } else {
+        // Fallback logging when BREVO_API_KEY is not defined yet (for sandbox testing/review)
+        console.warn(`[Brevo API Warning] BREVO_API_KEY is not defined or configured on the server. Logging subscriber welcome email to console:`);
+        console.log(`========================================================================`);
+        console.log(`[SUBSCRIBER MOCK DISPATCH] TO: <${emailLower}>`);
+        console.log(`[SUBSCRIBER MOCK DISPATCH] FROM: "${creatorNameStr} via Lynksy" <welcome@lynksy.app>`);
+        console.log(`[SUBSCRIBER MOCK DISPATCH] SUBJECT: ${subjectStr}`);
+        console.log(`[SUBSCRIBER MOCK DISPATCH] HTML PREVIEW CONTENT DETECTED: ${welcomeHtml.substring(0, 300)}...`);
+        console.log(`========================================================================`);
+        return res.json({ 
+          success: true, 
+          method: 'console_log', 
+          warning: 'BREVO_API_KEY is missing, subscriber welcome email logged to terminal console.' 
+        });
+      }
+    } catch (error) {
+      console.error("[Subscriber Welcome Email Error]", error);
+      res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
   // SECURE WEBHOOK: Razorpay Webhook Event Handler (Automatic secure subscription fulfillment)
   app.post('/api/razorpay/webhook', async (req: express.Request & { rawBody?: Buffer }, res) => {
     try {

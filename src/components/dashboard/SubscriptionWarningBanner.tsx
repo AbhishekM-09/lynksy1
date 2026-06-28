@@ -24,7 +24,13 @@ export function SubscriptionWarningBanner() {
 
   // Determine active states for the banner
   const isExpiringSoon = user.plan !== 'FREE' && daysLeft !== null && daysLeft <= 3 && daysLeft >= 0
-  const hasExpired = user.subscriptionStatus === 'EXPIRED' || (user.plan === 'FREE' && isExpired)
+  
+  // A standard free user who just registered has null planExpiresAt and null planStartedAt.
+  // We only show the expired banner if they have a plan that is not FREE, OR if they are currently FREE
+  // but previously had a paid plan (indicated by having planExpiresAt or planStartedAt).
+  const hasExpired = (user.subscriptionStatus === 'EXPIRED' || isExpired) && (
+    user.plan !== 'FREE' || (user.plan === 'FREE' && (user.planExpiresAt || user.planStartedAt))
+  )
 
   if (!isExpiringSoon && !hasExpired) return null
 

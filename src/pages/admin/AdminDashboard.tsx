@@ -1048,22 +1048,22 @@ export default function AdminDashboard() {
   const handleApproveWithdrawal = async (withdrawal: AdminWithdrawalItem) => {
     try {
       await setDoc(doc(db, 'withdrawals', withdrawal.id), {
-        status: 'paid',
+        status: 'completed',
         updatedAt: Timestamp.now()
       }, { merge: true })
       await setDoc(doc(db, 'users', withdrawal.uid, 'withdrawals', withdrawal.id), {
-        status: 'paid',
+        status: 'completed',
         updatedAt: Timestamp.now()
       }, { merge: true })
       
       await addDoc(collection(db, 'adminLogs'), {
         adminId: user?.uid || 'unknown',
         adminEmail: user?.email || 'unknown',
-        action: `Approved Withdrawal of ₹${withdrawal.amount} for @${withdrawal.username}`,
+        action: `Approved Withdrawal of ₹${withdrawal.amount} for @${withdrawal.username} (Marked Paid)`,
         timestamp: Timestamp.now()
       })
 
-      toast.success('Withdrawal request successfully approved and marked as PAID!')
+      toast.success('Withdrawal request successfully approved and marked as COMPLETED!')
     } catch (err) {
       console.error(err)
       toast.error('Failed to approve withdrawal request')
@@ -2040,7 +2040,7 @@ export default function AdminDashboard() {
                               <td className="p-4">
                                 <span className={cn(
                                   "px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase border tracking-wider",
-                                  w.status === 'paid' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/15" :
+                                  (w.status === 'paid' || w.status === 'completed') ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/15" :
                                   w.status === 'rejected' ? "bg-rose-500/10 text-rose-400 border-rose-500/15" :
                                   "bg-amber-500/10 text-amber-500 border-amber-500/15 animate-pulse"
                                 )}>
@@ -2060,12 +2060,12 @@ export default function AdminDashboard() {
                                       onClick={() => handleApproveWithdrawal(w)}
                                       className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-black text-[9px] uppercase tracking-wider transition-all"
                                     >
-                                      Approve
+                                      Mark Paid
                                     </button>
                                   </div>
                                 ) : (
                                   <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider px-3">
-                                    {w.status === 'paid' ? 'Settled (Paid)' : 'Closed'}
+                                    {(w.status === 'paid' || w.status === 'completed') ? 'Settled (Paid)' : 'Closed'}
                                   </span>
                                 )}
                               </td>

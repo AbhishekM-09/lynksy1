@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { getAnalytics, getDetailedEvents } from '@/firebase/firestore'
+import { db } from '@/firebase/config'
+import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { PlanGate } from '@/components/ui/PlanGate'
 import { 
@@ -116,6 +118,8 @@ export default function AnalyticsPage() {
   useEffect(() => {
     if (!user?.uid) return
     setLoading(true)
+    
+    // Initial fetch of complete analytical historical aggregated trends
     getAnalytics(user.uid, range)
       .then(res => {
         setData(res)
@@ -126,6 +130,122 @@ export default function AnalyticsPage() {
       .finally(() => {
         setLoading(false)
       })
+
+    // Subscribe to real-time pageViews for live location & views updates
+    const startDate = new Date()
+    startDate.setDate(startDate.getDate() - range)
+    const startTs = Timestamp.fromDate(startDate)
+
+    const pvQuery = query(
+      collection(db, 'users', user.uid, 'pageViews'),
+      where('timestamp', '>=', startTs)
+    )
+
+    const unsubscribePageViews = onSnapshot(pvQuery, (snapshot) => {
+      const pageViews = snapshot.docs.map(doc => doc.data() as PageView).filter(Boolean)
+      
+      setData(prev => {
+        if (!prev) return prev
+        
+        // 1. Recalculate unique visitors
+        const uniqueVisitors = new Set(pageViews.map(pv => (pv.region || '') + (pv.browser || ''))).size
+        
+        // 2. Recalculate devices
+        const deviceMap: Record<string, number> = {}
+        pageViews.forEach(pv => {
+          if (pv && pv.device) {
+            const dev = String(pv.device).toLowerCase()
+            deviceMap[dev] = (deviceMap[dev] ?? 0) + 1
+          }
+        })
+        const devices = Object.entries(deviceMap).map(([device, count]) => ({ device, count }))
+
+        // 3. Recalculate regions (Top Locations) with clean formatting
+        const regionMap: Record<string, number> = {}
+        pageViews.forEach(pv => {
+          if (pv && pv.region) {
+            const cleanRegion = String(pv.region || '').includes('/') && !String(pv.region || '').includes(',')
+              ? (String(pv.region || '').split('/').pop()?.replace(/_/g, ' ') || 'Other')
+              : (pv.region || 'Unknown')
+            regionMap[cleanRegion] = (regionMap[cleanRegion] ?? 0) + 1
+          }
+        })
+        const regions = Object.entries(regionMap)
+          .map(([region, count]) => ({ region, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10)
+
+        // 4. Recalculate sources
+        const sourceMap: Record<string, number> = {}
+        pageViews.forEach(pv => {
+          if (pv) {
+            const refererStr = String(pv.referer || '').toLowerCase()
+            const src = refererStr.includes('instagram') ? 'Instagram'
+                      : refererStr.includes('youtube') ? 'YouTube'
+                      : refererStr.includes('twitter') || refererStr.includes('x.com') ? 'Twitter/X'
+                      : refererStr === 'direct' ? 'Direct' : 'Other'
+            sourceMap[src] = (sourceMap[src] ?? 0) + 1
+          }
+        })
+        const sources = Object.entries(sourceMap).map(([source, count]) => ({ source, count }))
+
+        return {
+          ...prev,
+          totalViews: pageViews.length,
+          uniqueVisitors,
+          devices,
+          regions,
+          sources,
+          // Recalculate ctr
+          ctr: pageViews.length > 0 ? Math.round(prev.totalClicks / pageViews.length * 1000) / 10 : 0
+        }
+      })
+    }, (err) => {
+      console.error("Real-time pageViews subscription error:", err)
+    })
+
+    // Subscribe to real-time clickEvents for live click updates
+    const ceQuery = query(
+      collection(db, 'users', user.uid, 'clickEvents'),
+      where('timestamp', '>=', startTs)
+    )
+
+    const unsubscribeClicks = onSnapshot(ceQuery, (snapshot) => {
+      const clicks = snapshot.docs.map(doc => doc.data() as ClickEvent).filter(Boolean)
+      
+      setData(prev => {
+        if (!prev) return prev
+        
+        // Recalculate top links
+        const linkClickMap: Record<string, { title: string; count: number }> = {}
+        clicks.forEach(ce => {
+          if (ce && ce.linkId) {
+            if (!linkClickMap[ce.linkId]) {
+              linkClickMap[ce.linkId] = { title: ce.linkTitle || 'Untitled Link', count: 0 }
+            }
+            linkClickMap[ce.linkId].count++
+          }
+        })
+        const topLinks = Object.entries(linkClickMap)
+          .map(([id, { title, count }]) => ({ id, title, clicks: count }))
+          .sort((a, b) => b.clicks - a.clicks)
+          .slice(0, 10)
+
+        return {
+          ...prev,
+          totalClicks: clicks.length,
+          topLinks,
+          ctr: prev.totalViews > 0 ? Math.round(clicks.length / prev.totalViews * 1000) / 10 : 0
+        }
+      })
+    }, (err) => {
+      console.error("Real-time clickEvents subscription error:", err)
+    })
+
+    return () => {
+      unsubscribePageViews()
+      unsubscribeClicks()
+    }
   }, [user?.uid, range])
 
   const CustomTooltip = ({ active, payload, label }: { active?: boolean, payload?: { color: string; name: string; value: number }[], label?: string }) => {

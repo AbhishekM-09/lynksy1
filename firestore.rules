@@ -96,9 +96,7 @@ service cloud.firestore {
       return data.keys().hasAll(['creatorId', 'creatorUsername', 'email'])
         && data.creatorId is string && data.creatorId.size() > 0
         && data.creatorUsername is string && data.creatorUsername.size() > 0
-        && data.email is string && data.email.size() > 0 && data.email.size() <= 128
-        && (data.get('source', '') == null || data.get('source', '') is string)
-        && (data.get('subscribedAt', request.time) == null || data.get('subscribedAt', request.time) is timestamp);
+        && data.email is string && data.email.size() > 0 && data.email.size() <= 128;
     }
 
     function isValidCustomDomain(data) {

@@ -207,8 +207,8 @@ export const POOKIE_THEMES: PookieTheme[] = [
     bgEffect: 'bubbles',
     bgEffectColor: 'rgba(255,255,255,0.3)',
 
-    accentColor: '#000000',
-    accentGlow: 'rgba(0,0,0,0.4)',
+    accentColor: '#D81B60',
+    accentGlow: 'rgba(216,27,96,0.4)',
     secondaryAccent: '#FFD6F0',
     brandingColor: 'rgba(255,255,255,0.45)',
   },

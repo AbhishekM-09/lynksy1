@@ -102,6 +102,9 @@ export function PhonePreview({ user, links, products = [], showStore = true }: P
   const displayLinks = filterLinksByPlan(links, plan)
 
   const filteredLinks = displayLinks.filter(link => {
+    if (!link.title || link.title.trim() === '') {
+      return false
+    }
     if (link.type === 'UPI' || link.type === 'upi_tip') {
       return !showSupportCard
     }

@@ -524,7 +524,9 @@ export const incrementAiUsage = async (uid: string, user: User, type: 'general' 
 export const getLinks = async (uid: string): Promise<Link[]> => {
   const q = query(collection(db, 'users', uid, 'links'))
   const snap = await getDocs(q)
-  const links = snap.docs.map(d => ({ id: d.id, ...d.data() } as Link))
+  const links = snap.docs
+    .map(d => ({ id: d.id, ...d.data() } as Link))
+    .filter(l => l.title && l.title.trim() !== '')
   
   // In-memory sort: isPinned (descending), position (ascending)
   return links.sort((a, b) => {
@@ -564,6 +566,7 @@ export const getActiveLinks = async (uid: string): Promise<Link[]> => {
     .map(d => ({ id: d.id, ...d.data() } as Link))
     .filter(l => {
       if (l.isActive === false) return false
+      if (!l.title || l.title.trim() === '') return false
       const fromMs = l.showFrom ? safeToMillis(l.showFrom) : 0
       const untilMs = l.showUntil ? safeToMillis(l.showUntil) : 0
       
@@ -650,23 +653,82 @@ export const trackPageView = async (username: string, uid: string) => {
     if (cachedRegion) {
       region = cachedRegion
     } else {
-      // Attempt to get real location from IP
-      const locRes = await fetch('https://ipapi.co/json/').catch(() => null)
-      if (locRes && locRes.ok) {
-        const locData = await locRes.json()
-        if (locData.city && locData.country_name) {
-          region = `${locData.city}, ${locData.country_name}`
-        } else if (locData.country_name) {
-          region = locData.country_name
+      let gotLoc = false
+
+      // Try freeipapi.com first (extremely fast, generous rate limit, HTTPS)
+      try {
+        const res = await fetch('https://freeipapi.com/api/json').catch(() => null)
+        if (res && res.ok) {
+          const data = await res.json()
+          if (data.cityName && data.countryName) {
+            region = `${data.cityName}, ${data.countryName}`
+            gotLoc = true
+          } else if (data.countryName) {
+            region = data.countryName
+            gotLoc = true
+          }
         }
-        sessionStorage.setItem('lk_region', region)
-      } else {
-        // Fallback to timezone
-        region = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown'
+      } catch (e) {
+        console.warn('freeipapi failed:', e)
       }
+
+      if (!gotLoc) {
+        // Try ipwho.is as second fallback (fast, HTTPS, free for up to 10k/day)
+        try {
+          const res = await fetch('https://ipwho.is/').catch(() => null)
+          if (res && res.ok) {
+            const data = await res.json()
+            if (data.success && data.city && data.country) {
+              region = `${data.city}, ${data.country}`
+              gotLoc = true
+            } else if (data.success && data.country) {
+              region = data.country
+              gotLoc = true
+            }
+          }
+        } catch (e) {
+          console.warn('ipwhois failed:', e)
+        }
+      }
+
+      if (!gotLoc) {
+        // Try original ipapi.co as third fallback
+        try {
+          const res = await fetch('https://ipapi.co/json/').catch(() => null)
+          if (res && res.ok) {
+            const data = await res.json()
+            if (data.city && data.country_name) {
+              region = `${data.city}, ${data.country_name}`
+              gotLoc = true
+            } else if (data.country_name) {
+              region = data.country_name
+              gotLoc = true
+            }
+          }
+        } catch (e) {
+          console.warn('ipapi failed:', e)
+        }
+      }
+
+      if (!gotLoc) {
+        // Safe formatted timezone fallback
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''
+        if (tz && tz.includes('/')) {
+          region = tz.split('/').pop()?.replace(/_/g, ' ') || 'Unknown'
+        } else {
+          region = tz || 'Unknown'
+        }
+      }
+
+      sessionStorage.setItem('lk_region', region)
     }
   } catch {
-    region = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown'
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''
+    if (tz && tz.includes('/')) {
+      region = tz.split('/').pop()?.replace(/_/g, ' ') || 'Unknown'
+    } else {
+      region = tz || 'Unknown'
+    }
   }
 
   try {
@@ -1314,10 +1376,10 @@ export const addEmailSubscriber = async (
   const path = `emailSubscribers/${docId}`
   
   try {
-    // Validate creator has active premium plan supporting lead collection
+    // Validate creator exists
     const creator = await getUser(creatorId)
-    if (!creator || (creator.plan !== 'PRO' && creator.plan !== 'PRO_PLUS')) {
-      throw new Error('Creator is not on a active subscription supporting email collection.')
+    if (!creator) {
+      throw new Error('Creator profile not found.')
     }
 
     // 1. Check for duplicates using getDoc (requires 'get' permission on the specific document path, which is public)

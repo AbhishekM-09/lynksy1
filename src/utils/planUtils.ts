@@ -41,11 +41,6 @@ export const buildUrlWithUTM = (url: string, utm: { source?: string; medium?: st
 
 export const getPublicUrl = (user: Partial<User> | null) => {
   if (!user?.username) return '/'
-  const plan = user.plan || 'FREE'
-  
-  if (plan === 'PRO' || plan === 'PRO_PLUS') {
-    return `/u/${user.username}`
-  }
   return `/${user.username}`
 }
 

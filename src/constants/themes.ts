@@ -219,7 +219,7 @@ export const THEMES: Theme[] = [
   },
   {
     id: 'bubblegum-pop', name: 'Bubblegum Pop', requiredPlan: 'PRO_PLUS',
-    bgColor: '#FF6EC7', textColor: '#FFFFFF', accentColor: '#000000',
+    bgColor: '#FF6EC7', textColor: '#FFFFFF', accentColor: '#D81B60',
     cardBg: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.35)', buttonStyle: 'pill',
     preview: 'linear-gradient(135deg, #FF6EC7 0%, #FF9FD8 30%, #C89EFF 65%)',
   },
