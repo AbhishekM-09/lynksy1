@@ -116,7 +116,7 @@ CREATE POLICY "Delete Policy" ON reviews FOR DELETE USING ((data->>'userId') = a
 -- 11. short_links (URL Shortener records)
 CREATE POLICY "Select Policy" ON short_links FOR SELECT USING (true);
 CREATE POLICY "Insert Policy" ON short_links FOR INSERT WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
-CREATE POLICY "Update Policy" ON short_links FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON short_links FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "Delete Policy" ON short_links FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
 
 -- 12. url_shortener (URL Shortener alias mapping table)
@@ -152,7 +152,7 @@ CREATE POLICY "Select Policy" ON downloads FOR SELECT USING (
     ) OR public.is_admin()
 ); -- Verification token queries restricted to authorized owners, authenticated buyers, and administrators
 CREATE POLICY "Insert Policy" ON downloads FOR INSERT WITH CHECK (true); -- Order complete creates tokens
-CREATE POLICY "Update Policy" ON downloads FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Update Policy" ON downloads FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "Delete Policy" ON downloads FOR DELETE USING (public.is_admin());
 
 -- 15. payouts (Creator withdrawal records)
@@ -268,3 +268,57 @@ CREATE POLICY "Select Policy" ON ai_usage FOR SELECT USING ((data->>'userId') = 
 CREATE POLICY "Insert Policy" ON ai_usage FOR INSERT WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
 CREATE POLICY "Update Policy" ON ai_usage FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
 CREATE POLICY "Delete Policy" ON ai_usage FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+
+
+-- ─── SECTION 4: TRIGGER-BASED FIELD-LEVEL UPDATE CHECKS ──────────
+
+-- Trigger and check function for short_links updates
+CREATE OR REPLACE FUNCTION check_short_link_update()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- If owner or admin, allow any change
+  IF (NEW.data->>'userId') = auth.uid()::text OR public.is_admin() THEN
+    RETURN NEW;
+  END IF;
+
+  -- Otherwise, only allow updating the analytics/click fields.
+  IF (OLD.data - ARRAY['clicks', 'lastClick', 'firstClick', 'uniqueVisitors', 'devices', 'browsers', 'countries', 'referrers']) = 
+     (NEW.data - ARRAY['clicks', 'lastClick', 'firstClick', 'uniqueVisitors', 'devices', 'browsers', 'countries', 'referrers']) THEN
+    RETURN NEW;
+  END IF;
+
+  RAISE EXCEPTION 'Unauthorized update to restricted fields on short_links';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_check_short_link_update ON short_links;
+CREATE TRIGGER trg_check_short_link_update
+BEFORE UPDATE ON short_links
+FOR EACH ROW
+EXECUTE FUNCTION check_short_link_update();
+
+
+-- Trigger and check function for downloads updates
+CREATE OR REPLACE FUNCTION check_downloads_update()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- If admin, allow any change
+  IF public.is_admin() THEN
+    RETURN NEW;
+  END IF;
+
+  -- Otherwise, only allow updating the downloadCount field.
+  IF (OLD.data - 'downloadCount') = (NEW.data - 'downloadCount') THEN
+    RETURN NEW;
+  END IF;
+
+  RAISE EXCEPTION 'Unauthorized update to restricted fields on downloads';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_check_downloads_update ON downloads;
+CREATE TRIGGER trg_check_downloads_update
+BEFORE UPDATE ON downloads
+FOR EACH ROW
+EXECUTE FUNCTION check_downloads_update();
+
