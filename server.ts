@@ -915,7 +915,7 @@ async function start() {
     }
   });
 
-  // Robust Email validation API (Syntax check + DNS resolution)
+  // Robust Email validation API (Syntax check)
   app.post('/api/validate-email', async (req, res) => {
     try {
       const { email } = req.body;
@@ -925,44 +925,15 @@ async function start() {
 
       const emailStr = String(email).trim().toLowerCase();
 
-      // 1. Syntax check
+      // Syntax check
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(emailStr)) {
         return res.status(400).json({ success: false, error: "Please enter a valid email address." });
       }
 
-      const domain = emailStr.split('@')[1];
-      if (!domain) {
-        return res.status(400).json({ success: false, error: "Invalid email domain structure." });
-      }
-
-      // 2. DNS MX/A records resolution check to see if domain exists
-      dns.resolveMx(domain, (mxErr, mxAddresses) => {
-        if (!mxErr && mxAddresses && mxAddresses.length > 0) {
-          return res.json({ success: true });
-        }
-
-        // Check A record fallback if no MX records
-        dns.resolve(domain, 'A', (aErr, aAddresses) => {
-          if (!aErr && aAddresses && aAddresses.length > 0) {
-            return res.json({ success: true });
-          }
-
-          // If DNS returns ENOTFOUND, the domain definitely does not exist
-          if ((mxErr && (mxErr as any).code === 'ENOTFOUND') || (aErr && (aErr as any).code === 'ENOTFOUND')) {
-            return res.status(400).json({ 
-              success: false, 
-              error: `The email domain "@${domain}" does not exist. Please check your spelling.` 
-            });
-          }
-
-          // For other transient errors (like timeouts, no internet, or local dev), allow it through
-          return res.json({ success: true });
-        });
-      });
+      return res.json({ success: true });
     } catch (error) {
       console.error("[Email Validation API Error]", error);
-      // Fallback: allow the request if something unexpected fails
       return res.json({ success: true });
     }
   });
