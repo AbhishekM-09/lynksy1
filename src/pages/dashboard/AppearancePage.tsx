@@ -8,7 +8,6 @@ import { PhonePreview } from '@/components/links/PhonePreview'
 import { cn, isLightColor } from '@/utils/formatters'
 import type { Link, Product, User } from '@/types'
 import { Palette, MousePointer2, Check, Lock, RefreshCw, Eye, Plus, Sliders, Zap, Sparkles, Award } from 'lucide-react'
-import { HexColorPicker } from 'react-colorful'
 import { motion, AnimatePresence } from 'motion/react'
 import { POOKIE_THEMES, getPookieTheme } from '@/themes/pookie'
 import { PookieBackground } from '@/themes/pookie/PookieBackground'
@@ -41,7 +40,7 @@ const BADGE_STYLES = [
 export default function AppearancePage() {
   const { user, updateUserField } = useAuthStore()
   const { sidebarOpen } = useUIStore()
-  const { plan, gate, can } = usePlan()
+  const { plan, gate } = usePlan()
   
   const [activeTab, setActiveTab] = useState<'themes' | 'custom'>('themes')
   const [isDirty, setIsDirty] = useState(false)
@@ -70,7 +69,6 @@ export default function AppearancePage() {
   const [links, setLinks] = useState<Link[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [isSaving, setIsSaving] = useState(false)
-  const [showColorPicker, setShowColorPicker] = useState(false)
   const [showMobilePreview, setShowMobilePreview] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
 
@@ -149,11 +147,7 @@ export default function AppearancePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, plan]);
 
-  const handleThemeSelect = (tId: string, reqPlan: string) => {
-    if ((reqPlan === 'PRO' && plan === 'FREE') || (reqPlan === 'PRO_PLUS' && plan !== 'PRO_PLUS')) {
-      gate(reqPlan === 'PRO_PLUS' ? 'ultraPremiumThemes' : 'premiumThemes', () => {})
-      return
-    }
+  const handleThemeSelect = (tId: string) => {
     const theme = getTheme(tId, plan)
     const newData = { 
       ...formData, 
@@ -212,42 +206,40 @@ export default function AppearancePage() {
 
   return (
     <div className="grid xl:grid-cols-[1fr_320px] gap-8 relative xl:h-[calc(100vh-140px)] xl:overflow-hidden pb-12">
-      {/* Mobile Floating Preview Trigger */}
-      <button 
-        onClick={() => setShowMobilePreview(true)}
-        className="fixed bottom-6 right-6 z-40 xl:hidden w-14 h-14 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
-        style={{ backgroundColor: primaryColor }}
-      >
-        <Eye size={24} />
-      </button>
-
       <div className="space-y-10 xl:h-full xl:overflow-y-auto xl:pr-3 pb-24 no-scrollbar">
-        <div className="flex items-center gap-4 border-b border-cream-3">
+        <div className="flex items-center justify-between border-b border-cream-3">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setActiveTab('themes')}
+              className={cn(
+                "pb-4 px-2 text-sm font-bold transition-all relative font-syne",
+                activeTab === 'themes' ? "text-ink" : "text-muted hover:text-ink"
+              )}
+            >
+              Themes
+              {activeTab === 'themes' && <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: primaryColor }} />}
+            </button>
+            <button 
+              onClick={() => {
+                setActiveTab('custom')
+              }}
+              className={cn(
+                "pb-4 px-2 text-sm font-bold transition-all relative font-syne",
+                activeTab === 'custom' ? "text-ink" : "text-muted hover:text-ink"
+              )}
+            >
+              Custom Branding
+              {activeTab === 'custom' && <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: primaryColor }} />}
+            </button>
+          </div>
+
+          {/* Inline Mobile Preview Button */}
           <button 
-            onClick={() => setActiveTab('themes')}
-            className={cn(
-              "pb-4 px-2 text-sm font-bold transition-all relative font-syne",
-              activeTab === 'themes' ? "text-ink" : "text-muted hover:text-ink"
-            )}
+            onClick={() => setShowMobilePreview(true)}
+            className="xl:hidden pb-4 px-3 text-xs font-black uppercase tracking-widest flex items-center gap-1.5 hover:opacity-85 transition-opacity cursor-pointer"
+            style={{ color: primaryColor }}
           >
-            Themes
-            {activeTab === 'themes' && <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: primaryColor }} />}
-          </button>
-          <button 
-            onClick={() => {
-              if (!can('customBranding')) {
-                gate('customBranding', () => {})
-                return
-              }
-              setActiveTab('custom')
-            }}
-            className={cn(
-              "pb-4 px-2 text-sm font-bold transition-all relative font-syne",
-              activeTab === 'custom' ? "text-ink" : "text-muted hover:text-ink"
-            )}
-          >
-            Custom Branding
-            {activeTab === 'custom' && <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: primaryColor }} />}
+            <Eye size={14} /> Preview
           </button>
         </div>
 
@@ -291,13 +283,13 @@ export default function AppearancePage() {
 
             <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
               {THEMES.filter(t => !t.id.startsWith('pookie-') && !['strawberry-milk', 'cloud-nine', 'bubblegum-pop', 'butter-yellow', 'matcha-latte', 'baby-blue-sky', 'candy-floss', 'peach-boba', 'lavender-dreams', 'y2k-glitter'].includes(t.id)).map(t => {
-                const isLocked = (t.requiredPlan === 'PRO' && plan === 'FREE') || (t.requiredPlan === 'PRO_PLUS' && plan !== 'PRO_PLUS')
+                const isLocked = false
                 const isSelected = formData.themeId === t.id
 
                 return (
                   <button
                     key={t.id}
-                    onClick={() => handleThemeSelect(t.id, t.requiredPlan)}
+                    onClick={() => handleThemeSelect(t.id)}
                     className={cn(
                       "group relative flex flex-col p-1.5 sm:p-2 bg-white rounded-2xl border-2 transition-all overflow-hidden",
                       isSelected ? "shadow-lg ring-4" : "border-cream-3 hover:border-muted-2"
@@ -357,8 +349,7 @@ export default function AppearancePage() {
               <div className="bg-pink-50/50 p-6 rounded-[40px] border-2 border-pink-100 shadow-sm">
                 <PookieThemeSelector 
                   currentThemeId={formData.themeId}
-                  onSelect={(tId) => handleThemeSelect(tId, 'PRO_PLUS')}
-                  userPlan={plan}
+                  onSelect={(tId) => handleThemeSelect(tId)}
                   onUpgrade={() => gate('ultraPremiumThemes', () => {})}
                 />
               </div>
@@ -387,14 +378,9 @@ export default function AppearancePage() {
                         <p className="text-[10px] font-bold text-muted uppercase tracking-widest">Customize your animated profile</p>
                       </div>
                     </div>
-                    {plan !== 'PRO_PLUS' && (
-                       <span className="px-3 py-1 bg-ink text-white rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
-                         <Lock size={10} /> PRO+ Only
-                       </span>
-                    )}
                   </div>
 
-                  <div className={cn("max-w-2xl", plan !== 'PRO_PLUS' && "opacity-40 pointer-events-none grayscale")}>
+                  <div className="max-w-2xl">
                     <div className="grid sm:grid-cols-2 gap-8">
                       <div className="space-y-6">
                         <div className="space-y-3">
@@ -464,30 +450,12 @@ export default function AppearancePage() {
                     </div>
                   </div>
 
-                  {plan !== 'PRO_PLUS' && (
-                    <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] flex items-center justify-center p-8 z-20">
-                      <div className="bg-ink text-white p-6 rounded-3xl shadow-2xl text-center max-w-xs space-y-4">
-                        <Zap className="mx-auto text-orange" size={32} fill="currentColor" />
-                        <h4 className="font-syne font-black uppercase text-sm tracking-widest">Upgrade to PRO+</h4>
-                        <p className="text-[10px] font-medium opacity-70 leading-relaxed">
-                          Unlock full customization of animated themes, custom speeds, particle density, and more.
-                        </p>
-                        <button 
-                          onClick={() => gate('canCollectEmails', () => {})}
-                          className="w-full py-3 bg-orange text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-orange-600 transition-all shadow-lg shadow-orange/20"
-                        >
-                          Unlock Theme Engine
-                        </button>
-                      </div>
-                    </div>
-                  )}
                 </motion.div>
               )}
             </AnimatePresence>
 
             {/* Premium Theme Customization Section */}
-            {plan !== 'FREE' && (
-              <div className="pt-8 border-t border-cream-2 space-y-12">
+            <div className="pt-8 border-t border-cream-2 space-y-12">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-xl bg-orange/10">
                     <Zap size={20} className="text-orange" fill="currentColor" />
@@ -604,98 +572,13 @@ export default function AppearancePage() {
                    </div>
                 </div>
               </div>
-            )}
 
           </section>
         ) : (
           <div className="space-y-12">
              {/* Theme & Color Customization */}
              <section className="space-y-10">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Palette size={18} style={{ color: primaryColor }} />
-                      <h4 className="text-sm font-bold text-ink">Brand Accent Color</h4>
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-muted">Direct Pick</span>
-                  </div>
-                  
-                  <div className="bg-white p-6 rounded-[32px] border-2 border-cream-3 space-y-6 shadow-sm">
-                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
-                      {BRAND_COLORS.map(c => (
-                        <button
-                          key={c}
-                          onClick={() => { 
-                            const newData = { 
-                              ...formData, 
-                              accentColor: c,
-                              buttonColor: c,
-                              textColor: (c === '#1C1813' || c === '#111827') ? '#FFFFFF' : formData.textColor
-                            }
-                            setFormData(newData)
-                          }}
-                          className={cn(
-                            "aspect-square rounded-2xl border-2 transition-all hover:scale-110 active:scale-95 group relative",
-                            formData.accentColor === c ? "ring-2 ring-offset-2 ring-ink" : "border-cream-3"
-                          )}
-                          style={{ background: c }}
-                        >
-                          {formData.accentColor === c && (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <Check size={12} className={cn((c === '#1C1813' || c === '#111827') ? "text-white" : "text-white shadow-sm")} />
-                            </div>
-                          )}
-                        </button>
-                      ))}
-                      <button 
-                        onClick={() => setShowColorPicker(!showColorPicker)}
-                        className={cn(
-                          "aspect-square rounded-2xl border-2 border-dashed border-cream-3 flex items-center justify-center text-muted hover:border-ink hover:text-ink transition-all",
-                          showColorPicker && "bg-cream border-ink text-ink"
-                        )}
-                      >
-                        <Plus size={20} />
-                      </button>
-                    </div>
 
-                    <AnimatePresence>
-                      {showColorPicker && (
-                        <motion.div 
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="pt-4 border-t border-cream overflow-hidden"
-                        >
-                           <div className="p-4 bg-cream/30 rounded-3xl grid md:grid-cols-[200px_1fr] gap-6">
-                              <div className="[&_.react-colorful]:w-full [&_.react-colorful]:h-32">
-                                <HexColorPicker 
-                                  color={formData.accentColor} 
-                                  onChange={(c) => { 
-                                    setFormData(prev => ({ ...prev, accentColor: c })); 
-                                  }} 
-                                />
-                              </div>
-                              <div className="space-y-4">
-                                <div className="p-4 bg-white rounded-2xl border border-cream shadow-sm">
-                                  <p className="text-[10px] font-black uppercase tracking-widest text-muted mb-2">Hex Value</p>
-                                  <input 
-                                    type="text"
-                                    value={formData.accentColor}
-                                    onChange={(e) => {
-                                      const val = e.target.value
-                                      setFormData(prev => ({ ...prev, accentColor: val }))
-                                    }}
-                                    className="w-full text-xl font-mono font-bold text-ink bg-transparent outline-none"
-                                  />
-                                </div>
-                                <p className="text-[10px] text-muted leading-relaxed font-medium">Fine-tune your brand color. This updates links, profile borders, and button accents.</p>
-                              </div>
-                           </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
 
                 <div className="grid sm:grid-cols-3 gap-6">
                   <div className="space-y-4">
@@ -847,7 +730,7 @@ export default function AppearancePage() {
 
                <div className="grid sm:grid-cols-2 gap-3 mt-3">
                  {BADGE_STYLES.map(style => {
-                   const isStyleLocked = plan !== 'PRO_PLUS'
+                   const isStyleLocked = false
                    return (
                      <button
                        key={style.id}

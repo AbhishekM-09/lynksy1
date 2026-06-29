@@ -4,13 +4,13 @@ import { POOKIE_THEMES } from '../index'
 
 interface Props {
   currentThemeId: string
-  userPlan: string
+  userPlan?: string
   onSelect: (id: string) => void
   onUpgrade: () => void
 }
 
-export function PookieThemeSelector({ currentThemeId, userPlan, onSelect, onUpgrade }: Props) {
-  const isEligible = userPlan === 'PRO_PLUS'
+export function PookieThemeSelector({ currentThemeId, onSelect, onUpgrade }: Props) {
+  const isEligible = true
 
   return (
     <div className="space-y-4">

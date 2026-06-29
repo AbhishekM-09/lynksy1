@@ -49,6 +49,26 @@ export function TopBar() {
       </div>
 
       <div className="flex items-center gap-2 lg:gap-6">
+        {/* Mobile View Live Page and Copy capsule */}
+        <div className="flex md:hidden items-center gap-1 bg-cream/50 border border-cream-3 rounded-xl p-1 shadow-sm">
+          <button 
+            onClick={copyUrl} 
+            className="p-1.5 text-muted hover:text-orange hover:bg-white rounded-lg transition-all active:scale-90" 
+            title="Copy Link"
+          >
+            <Copy size={13} />
+          </button>
+          <div className="w-[1px] h-3 bg-cream-3" />
+          <a 
+            href={profileUrl} 
+            target="_blank" 
+            className="p-1.5 text-muted hover:text-orange hover:bg-white rounded-lg transition-all active:scale-90 flex items-center justify-center"
+            title="View Live Page"
+          >
+            <ExternalLink size={13} />
+          </a>
+        </div>
+
         <div className="hidden md:flex items-center gap-3 bg-cream/40 border border-cream-3 rounded-xl px-4 py-2 hover:bg-cream/60 transition-colors group">
           <span className="text-xs text-ink/60 font-bold group-hover:text-ink transition-colors">{displayUrl}</span>
           <div className="w-[1px] h-3 bg-cream-3" />

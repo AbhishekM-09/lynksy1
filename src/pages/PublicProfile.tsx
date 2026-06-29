@@ -119,6 +119,21 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
     
     setSubscribing(true)
     try {
+      // 1. Validate email existence and domain via server-side check
+      const validateRes = await fetch('/api/validate-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailVal })
+      })
+      
+      const validateData = await validateRes.json()
+      if (!validateRes.ok || !validateData.success) {
+        setSubscriberError(validateData.error || 'Please enter a valid, existing email address')
+        setSubscribing(false)
+        return
+      }
+
+      // 2. Register subscription
       await addEmailSubscriber(user!.uid, user!.username, emailVal, 'public_profile')
       
       // Trigger welcome automation email via server
@@ -145,8 +160,9 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
       toast.success('Successfully subscribed!')
     } catch (err) {
       console.error(err)
-      if (err instanceof Error && err.message === 'ALREADY_SUBSCRIBED') {
-        setSubscriberError('You are already subscribed.')
+      const errStr = err instanceof Error ? err.message : String(err)
+      if (errStr.includes('ALREADY_SUBSCRIBED')) {
+        setSubscriberError('Already subscribed. Do not subscribe again with the same email.')
       } else {
         setSubscriberError('Subscription failed. Please try again.')
       }
@@ -521,14 +537,15 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
   const effectiveButtonColor = user?.buttonColor || user?.accentColor || theme.accentColor
   const rawButtonTextColor = user?.buttonTextColor || theme.buttonTextColor || (effectiveButtonStyle === 'filled' || effectiveButtonStyle === 'pill' ? '#FFFFFF' : effectiveButtonColor)
   
-  // Guard against contrast issues (e.g. white text on a white button or dark text on a dark button)
   const isButtonBgLight = isLightColor(effectiveButtonColor)
   const isButtonTextLight = isLightColor(rawButtonTextColor)
-  const effectiveButtonTextColor = (effectiveButtonStyle === 'filled' || effectiveButtonStyle === 'pill')
-    ? (isButtonBgLight === isButtonTextLight 
-        ? (isButtonBgLight ? '#1C1813' : '#FFFFFF') 
+  const effectiveButtonTextColor = user?.buttonTextColor 
+    ? user.buttonTextColor 
+    : ((effectiveButtonStyle === 'filled' || effectiveButtonStyle === 'pill')
+        ? (isButtonBgLight === isButtonTextLight 
+            ? (isButtonBgLight ? '#1C1813' : '#FFFFFF') 
+            : rawButtonTextColor)
         : rawButtonTextColor)
-    : rawButtonTextColor
 
   const effectiveRadius = user.themeSettings?.borderRadius ?? theme.borderRadius ?? (effectiveButtonStyle === 'pill' ? 999 : 16)
   
@@ -1331,7 +1348,7 @@ export default function PublicProfile({ usernameFromHost, customDomain }: Public
                       : effectiveButtonStyle === 'soft' 
                         ? getRgba(effectiveButtonColor, 0.1) 
                         : 'transparent'),
-                  color: effectiveButtonStyle === 'filled' || effectiveButtonStyle === 'pill' ? effectiveButtonTextColor : effectiveButtonColor,
+                  color: effectiveButtonTextColor,
                   borderColor: theme.id === 'pride-rainbow' ? 'transparent' : effectiveButtonColor,
                   animation: theme.id === 'pride-rainbow' ? 'rainbow-border 5s linear infinite' : undefined,
                   backdropFilter: (theme.isGlass || theme.linkBackdrop) ? `blur(${user.themeSettings?.blurAmount || theme.blurAmount || 10}px)` : undefined,

@@ -1728,8 +1728,8 @@ export default function Landing() {
                       <input
                         type="text"
                         disabled
-                        value="Simran"
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 text-xs text-zinc-800 font-bold"
+                        placeholder="John Doe"
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 text-xs text-zinc-800 font-bold placeholder-zinc-400"
                       />
                     </div>
 
@@ -1738,8 +1738,8 @@ export default function Landing() {
                       <input
                         type="email"
                         disabled
-                        value="simran@gmail.com"
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 text-xs text-zinc-800 font-bold"
+                        placeholder="john.doe@example.com"
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 text-xs text-zinc-800 font-bold placeholder-zinc-400"
                       />
                     </div>
                   </div>
@@ -1764,12 +1764,12 @@ export default function Landing() {
 
                   <div className="space-y-1.5 text-[10.5px] font-mono">
                     <div className="flex justify-between items-center bg-white border border-zinc-200/60 rounded-lg p-2">
-                      <span className="text-zinc-800 font-bold">Aman Sharma</span>
-                      <span className="text-[#7C3AED] font-bold">ama***@gmail.com</span>
+                      <span className="text-zinc-800 font-bold">Subscriber #1</span>
+                      <span className="text-[#7C3AED] font-bold">sub***@example.com</span>
                     </div>
                     <div className="flex justify-between items-center bg-white border border-zinc-200/60 rounded-lg p-2">
-                      <span className="text-zinc-800 font-bold">Priya Patel</span>
-                      <span className="text-[#7C3AED] font-bold">pri***@yahoo.com</span>
+                      <span className="text-zinc-800 font-bold">Subscriber #2</span>
+                      <span className="text-[#7C3AED] font-bold">fan***@example.com</span>
                     </div>
                   </div>
                 </div>

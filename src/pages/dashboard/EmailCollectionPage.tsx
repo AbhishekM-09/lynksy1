@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { usePlan } from '@/hooks/usePlan'
-import { getEmailSubscribers, deleteEmailSubscriber, updateUser } from '@/firebase/firestore'
+import { deleteEmailSubscriber, updateUser, subscribeToEmailSubscribers } from '@/firebase/firestore'
 import { EmailSubscriber } from '@/types'
 import { 
   Mail, Settings, Sparkles, Loader2, Copy, Trash2, Search,
@@ -56,24 +56,26 @@ export default function EmailCollectionPage() {
   // Analytics options
   const [chartDays, setChartDays] = useState<7 | 30 | 90>(7)
 
-  // Load Subscribers
-  const fetchSubs = useCallback(async () => {
-    if (!user?.uid) return
-    setIsLoadingSubs(true)
-    try {
-      const data = await getEmailSubscribers(user.uid)
-      setSubscribers(data)
-    } catch (e) {
-      console.error(e)
-      toast.error('Failed to load subscribers')
-    } finally {
-      setIsLoadingSubs(false)
-    }
-  }, [user?.uid])
-
+  // Load Subscribers in Real-Time
   useEffect(() => {
-    fetchSubs()
-  }, [fetchSubs])
+    if (!user?.uid) return
+
+    setIsLoadingSubs(true)
+    const unsubscribe = subscribeToEmailSubscribers(
+      user.uid,
+      (data) => {
+        setSubscribers(data)
+        setIsLoadingSubs(false)
+      },
+      (err) => {
+        console.error(err)
+        toast.error('Failed to load subscribers')
+        setIsLoadingSubs(false)
+      }
+    )
+
+    return () => unsubscribe()
+  }, [user?.uid])
 
   // Save Settings Handlers
   const handleSaveSetup = async () => {
@@ -373,7 +375,6 @@ export default function EmailCollectionPage() {
         <button
           onClick={() => {
             setActiveTab('subscribers')
-            fetchSubs()
           }}
           className={`px-1.5 py-2.5 md:px-5 md:py-3 rounded-xl md:rounded-2xl text-[9px] sm:text-[10px] md:text-[11px] font-black tracking-wider uppercase font-syne transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 cursor-pointer relative overflow-hidden ${
             activeTab === 'subscribers' 
@@ -424,7 +425,6 @@ export default function EmailCollectionPage() {
                 type="button"
                 onClick={() => {
                   setActiveTab('subscribers')
-                  fetchSubs()
                 }}
                 className="w-full md:w-auto px-4 py-2 bg-gradient-to-r from-orange to-orange-600 hover:from-orange/90 hover:to-orange/80 text-white font-syne text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer shadow-lg shadow-orange/10 transition-all duration-300"
               >

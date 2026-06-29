@@ -5,11 +5,35 @@ import {
   Mail, Phone, User, ShieldCheck, ArrowRight, AlertCircle
 } from 'lucide-react'
 import confetti from 'canvas-confetti'
-import { Product, PaymentConnection } from '@/types/store'
+import { Product } from '@/types/store'
 import { formatPrice, CATEGORY_INFO } from '@/utils/storeUtils'
 import { createOrder, confirmOrderPayment } from '@/firebase/store'
-import { getPaymentConnection } from '@/firebase/payments'
 import toast from 'react-hot-toast'
+
+interface RazorpayInstance {
+  open: () => void
+}
+
+interface WindowWithRazorpay {
+  Razorpay?: new (options: unknown) => RazorpayInstance
+}
+
+// Dynamic script loader for Razorpay Checkout
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    const win = window as unknown as WindowWithRazorpay
+    if (win.Razorpay) {
+      resolve(true)
+      return
+    }
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.async = true
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
+}
 
 interface CheckoutModalProps {
   isOpen: boolean
@@ -30,25 +54,6 @@ export function CheckoutModal({ isOpen, onClose, product, creatorUid }: Checkout
   const [downloadToken, setDownloadToken] = useState('')
   const [validationError, setValidationError] = useState<string | null>(null)
   
-  const [creatorConnection, setCreatorConnection] = useState<PaymentConnection | null>(null)
-  const [loadingConnection, setLoadingConnection] = useState(true)
-
-  useEffect(() => {
-    if (isOpen && creatorUid) {
-      setLoadingConnection(true)
-      getPaymentConnection(creatorUid)
-        .then((conn) => {
-          setCreatorConnection(conn)
-        })
-        .catch((err) => {
-          console.error('Failed to load payment connection:', err)
-        })
-        .finally(() => {
-          setLoadingConnection(false)
-        })
-    }
-  }, [isOpen, creatorUid])
-
   useEffect(() => {
     if (!isOpen) {
       // Reset state when closing
@@ -103,7 +108,7 @@ export function CheckoutModal({ isOpen, onClose, product, creatorUid }: Checkout
 
     setIsSubmitting(true)
     try {
-      // Create order with 'MANUAL' status
+      // Create pending order with 'pending' status
       const id = await createOrder(creatorUid, {
         productId: product.id,
         productTitle: product.title,
@@ -111,27 +116,123 @@ export function CheckoutModal({ isOpen, onClose, product, creatorUid }: Checkout
         buyerName: trimmedName,
         buyerEmail: trimmedEmail,
         buyerPhone: cleanPhone,
-        razorpayOrderId: 'MANUAL',
+        razorpayOrderId: 'PENDING',
         emailConsent: emailConsent
       })
-      
-      const token = await confirmOrderPayment(creatorUid, id, product.id, {
-        razorpayPaymentId: 'MANUAL',
-        razorpaySignature: 'MANUAL',
-        fileStoragePath: product.fileUrl,
-        fileName: product.fileName,
-        fileSize: product.fileSize,
-        buyerEmail: trimmedEmail
+
+      // If product is free (price === 0), bypass Razorpay and auto-confirm order payment
+      if (product.price === 0) {
+        const token = await confirmOrderPayment(creatorUid, id, product.id, {
+          razorpayPaymentId: 'FREE',
+          razorpaySignature: 'FREE',
+          fileStoragePath: product.fileUrl,
+          fileName: product.fileName,
+          fileSize: product.fileSize,
+          buyerEmail: trimmedEmail
+        })
+
+        setDownloadToken(token)
+        setStep('success')
+        fireConfetti()
+        return
+      }
+
+      // Load Razorpay Checkout SDK script dynamically
+      const loaded = await loadRazorpayScript()
+      if (!loaded) {
+        throw new Error('Failed to load Razorpay payment SDK. Please check your network connection.')
+      }
+
+      // Call our secure backend to create a Razorpay order under admin account
+      const orderRes = await fetch('/api/store/create-razorpay-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: product.price,
+          productId: product.id,
+          creatorId: creatorUid
+        })
       })
 
-      setDownloadToken(token)
-      setStep('success')
-      fireConfetti()
+      const orderData = await orderRes.json()
+      if (!orderRes.ok || !orderData.orderId) {
+        throw new Error(orderData.error || 'Failed to create platform checkout session')
+      }
+
+      // Initialize and open Razorpay Checkout modal
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'Lynksy Checkout',
+        description: `${product.title}`,
+        order_id: orderData.orderId,
+        handler: async function (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) {
+          setStep('processing')
+          try {
+            // Verify payment securely on our platform server
+            const verifyRes = await fetch('/api/store/verify-razorpay-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            })
+
+            const verifyData = await verifyRes.json()
+            if (!verifyRes.ok || !verifyData.success) {
+              throw new Error(verifyData.error || 'Payment verification failed')
+            }
+
+            // Successfully paid, confirm the order on client side
+            const token = await confirmOrderPayment(creatorUid, id, product.id, {
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+              fileStoragePath: product.fileUrl,
+              fileName: product.fileName,
+              fileSize: product.fileSize,
+              buyerEmail: trimmedEmail
+            })
+
+            setDownloadToken(token)
+            setStep('success')
+            fireConfetti()
+          } catch (verifyErr) {
+            console.error('Store payment confirmation error:', verifyErr)
+            toast.error(verifyErr instanceof Error ? verifyErr.message : 'Failed to finalize purchase')
+            setStep('details')
+            setIsSubmitting(false)
+          }
+        },
+        prefill: {
+          name: trimmedName,
+          email: trimmedEmail,
+          contact: cleanPhone
+        },
+        theme: {
+          color: '#FF6B00'
+        },
+        modal: {
+          ondismiss: function () {
+            setIsSubmitting(false)
+            setStep('details')
+          }
+        }
+      }
+
+      const win = window as unknown as WindowWithRazorpay
+      if (!win.Razorpay) {
+        throw new Error('Razorpay SDK failed to initialize correctly.')
+      }
+      const rzpInstance = new win.Razorpay(options)
+      rzpInstance.open()
+
     } catch (e) {
       console.error(e)
       const message = e instanceof Error ? e.message : 'Failed to process order'
       toast.error(message)
-    } finally {
       setIsSubmitting(false)
     }
   }
@@ -270,20 +371,45 @@ export function CheckoutModal({ isOpen, onClose, product, creatorUid }: Checkout
                       </motion.div>
                     )}
 
-                    {loadingConnection ? (
-                      <div className="flex flex-col items-center justify-center p-8 space-y-2">
-                        <Loader2 className="animate-spin text-orange" size={24} />
-                        <span className="text-[10px] font-black uppercase text-muted tracking-widest">Validating gateway routing...</span>
-                      </div>
-                    ) : creatorConnection && creatorConnection.status === 'connected' ? (
+                    {product.price === 0 ? (
+                      <>
+                        <div className="bg-cream-1 p-5 rounded-3xl border border-cream-3 text-left">
+                            <div className="flex items-center gap-3 mb-2">
+                                <ShieldCheck className="text-green-500" size={16} />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Free Digital Access</span>
+                            </div>
+                            <p className="text-[10px] text-muted leading-relaxed uppercase tracking-wider">
+                                No payment is required. You can download this digital product directly.
+                            </p>
+                        </div>
+
+                        <button
+                          onClick={handleProceed}
+                          disabled={isSubmitting}
+                          className="w-full py-5 bg-ink text-white rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-orange hover:shadow-xl hover:shadow-orange/20 transition-all disabled:opacity-50 group"
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="animate-spin" size={18} />
+                              Preparing instant delivery...
+                            </>
+                          ) : (
+                            <>
+                              <span>Download for Free</span>
+                              <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform" />
+                            </>
+                          )}
+                        </button>
+                      </>
+                    ) : (
                       <>
                         <div className="bg-green-50 text-green-700 border border-green-200 rounded-3xl p-5 space-y-2 text-left">
                             <div className="flex items-center gap-2 font-black text-[10px] uppercase tracking-widest text-green-700">
                                  <ShieldCheck size={16} className="text-green-500" />
-                                 <span>Direct Settlement Active</span>
+                                 <span>Platform Secured Checkout</span>
                             </div>
                             <p className="text-[11px] text-green-600 font-bold leading-relaxed uppercase tracking-wider text-[10px]">
-                                Your payment is processed securely. 100% of the funds are settled directly into the merchant account of <strong>{creatorConnection.business_name || 'the creator'}</strong>.
+                                Your payment is processed securely via <strong>Lynksy Platform Gateway</strong>. All purchases are protected and instantly unlocked.
                             </p>
                         </div>
 
@@ -304,59 +430,6 @@ export function CheckoutModal({ isOpen, onClose, product, creatorUid }: Checkout
                             </>
                           )}
                         </button>
-                      </>
-                    ) : (
-                      <>
-                        {product.price === 0 ? (
-                          <>
-                            <div className="bg-cream-1 p-5 rounded-3xl border border-cream-3 text-left">
-                                <div className="flex items-center gap-3 mb-2">
-                                    <ShieldCheck className="text-green-500" size={16} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Free Digital Access</span>
-                                </div>
-                                <p className="text-[10px] text-muted leading-relaxed uppercase tracking-wider">
-                                    No payment is required. You can download this digital product directly.
-                                </p>
-                            </div>
-
-                            <button
-                              onClick={handleProceed}
-                              disabled={isSubmitting}
-                              className="w-full py-5 bg-ink text-white rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-orange hover:shadow-xl hover:shadow-orange/20 transition-all disabled:opacity-50 group"
-                            >
-                              {isSubmitting ? (
-                                <>
-                                  <Loader2 className="animate-spin" size={18} />
-                                  Preparing instant delivery...
-                                </>
-                              ) : (
-                                <>
-                                  <span>Download for Free</span>
-                                  <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform" />
-                                </>
-                              )}
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <div className="bg-red-50 text-red-600 border border-red-100 p-5 rounded-3xl space-y-2 text-left">
-                                <div className="flex items-center gap-2 font-black text-[10px] uppercase tracking-widest text-red-700">
-                                     <AlertCircle size={16} className="text-red-500" />
-                                     <span>Checkout Unavailable</span>
-                                </div>
-                                <p className="text-[10px] text-red-600 font-bold leading-relaxed uppercase tracking-wider">
-                                     This storefront is currently not accepting active payments. Checkouts and direct credit settlements are disabled until the owner connects an active payment gateway.
-                                </p>
-                            </div>
-
-                            <button
-                              disabled
-                              className="w-full py-5 bg-ink/20 text-ink/40 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 cursor-not-allowed"
-                            >
-                              <span>Checkout Disabled</span>
-                            </button>
-                          </>
-                        )}
                       </>
                     )}
                   </div>

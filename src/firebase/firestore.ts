@@ -2,10 +2,10 @@ import {
   doc, getDoc, setDoc, updateDoc, deleteDoc, collection,
   getDocs, addDoc, query, orderBy, where, limit,
   serverTimestamp, Timestamp, increment, writeBatch,
-  getDocFromCache,
+  getDocFromCache, onSnapshot,
 } from 'firebase/firestore'
 import { auth, db } from './config'
-import type { User, Link, PlanType, PageView, ClickEvent, Invoice, AnalyticsData, Product, DetailedEvent } from '@/types'
+import type { User, Link, PlanType, PageView, ClickEvent, Invoice, AnalyticsData, Product, DetailedEvent, EmailSubscriber } from '@/types'
 
 export enum OperationType {
   CREATE = 'create',
@@ -1361,6 +1361,37 @@ export const getEmailSubscribers = async (creatorId: string): Promise<EmailSubsc
     handleFirestoreError(error, OperationType.LIST, path)
     return []
   }
+}
+
+export const subscribeToEmailSubscribers = (
+  creatorId: string,
+  onUpdate: (subs: EmailSubscriber[]) => void,
+  onError?: (error: unknown) => void
+) => {
+  const path = 'emailSubscribers'
+  const q = query(
+    collection(db, path),
+    where('creatorId', '==', creatorId)
+  )
+  return onSnapshot(
+    q,
+    (snap) => {
+      const subs = snap.docs.map(d => ({ id: d.id, ...d.data() } as EmailSubscriber))
+      const sorted = subs.sort((a, b) => {
+        const tA = a.subscribedAt?.toMillis?.() || 0
+        const tB = b.subscribedAt?.toMillis?.() || 0
+        return tB - tA
+      })
+      onUpdate(sorted)
+    },
+    (error) => {
+      if (onError) {
+        onError(error)
+      } else {
+        handleFirestoreError(error, OperationType.LIST, path)
+      }
+    }
+  )
 }
 
 export const addEmailSubscriber = async (

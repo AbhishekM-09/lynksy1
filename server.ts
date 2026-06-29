@@ -9,6 +9,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
+import dns from 'dns';
 
 // Setup Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
@@ -416,6 +417,84 @@ async function start() {
       res.status(500).json({ error: error instanceof Error ? error.message : "Internal server signature verification error" });
     }
   });
+
+  // Razorpay Store Product Order Creation Endpoint
+  app.post('/api/store/create-razorpay-order', async (req, res) => {
+    try {
+      const { amount, productId, creatorId } = req.body;
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ error: "Invalid product price" });
+      }
+
+      const keyId = process.env.RAZORPAY_KEY_ID;
+      const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+      if (!keyId || !keySecret || keyId === 'rzp_test_placeholder' || keySecret === 'placeholder_secret') {
+        return res.status(400).json({ 
+          error: "Admin Razorpay is not configured on the server. Please define RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in your AI Studio secrets environment variables." 
+        });
+      }
+
+      const { default: Razorpay } = await import('razorpay');
+      const rzp = new Razorpay({ key_id: keyId, key_secret: keySecret });
+      
+      const order = await rzp.orders.create({
+        amount: Math.round(amount * 100), // in paise (INR)
+        currency: 'INR',
+        receipt: `store_${productId.substring(0, 8)}_${Date.now()}`,
+        notes: {
+          productId,
+          creatorId
+        }
+      });
+
+      res.status(200).json({
+        orderId: order.id,
+        keyId, // return the active public key ID so the client can initialize Checkout
+        amount: Math.round(amount * 100),
+        currency: 'INR'
+      });
+    } catch (error) {
+      console.error("Store Create Order Error:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Internal server order creation failure" });
+    }
+  });
+
+  // Razorpay Store Product Payment Verification Endpoint
+  app.post('/api/store/verify-razorpay-payment', async (req, res) => {
+    try {
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+      if (!razorpay_order_id || !razorpay_payment_id) {
+        return res.status(400).json({ error: "Missing required Razorpay parameters" });
+      }
+
+      const keySecret = process.env.RAZORPAY_KEY_SECRET;
+      if (!keySecret || keySecret === 'placeholder_secret') {
+        return res.status(400).json({ error: "Razorpay is not configured on the server." });
+      }
+
+      if (!razorpay_signature) {
+        return res.status(400).json({ error: 'Missing payment signature verification parameter.' });
+      }
+
+      const expectedSignature = crypto
+        .createHmac('sha256', keySecret)
+        .update(razorpay_order_id + '|' + razorpay_payment_id)
+        .digest('hex');
+
+      const verified = expectedSignature === razorpay_signature;
+
+      if (!verified) {
+        return res.status(400).json({ error: "Signature validation failed. Payment is invalid or tampered with." });
+      }
+
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Verify Store Payment Error:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Internal server signature verification error" });
+    }
+  });
+
   // AI Routes
   app.post('/api/ai/bios', async (req, res) => {
     try {
@@ -833,6 +912,58 @@ async function start() {
     } catch (error) {
       console.error("[Welcome Email Error]", error);
       res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  // Robust Email validation API (Syntax check + DNS resolution)
+  app.post('/api/validate-email', async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ success: false, error: "Email address is required." });
+      }
+
+      const emailStr = String(email).trim().toLowerCase();
+
+      // 1. Syntax check
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailStr)) {
+        return res.status(400).json({ success: false, error: "Please enter a valid email address." });
+      }
+
+      const domain = emailStr.split('@')[1];
+      if (!domain) {
+        return res.status(400).json({ success: false, error: "Invalid email domain structure." });
+      }
+
+      // 2. DNS MX/A records resolution check to see if domain exists
+      dns.resolveMx(domain, (mxErr, mxAddresses) => {
+        if (!mxErr && mxAddresses && mxAddresses.length > 0) {
+          return res.json({ success: true });
+        }
+
+        // Check A record fallback if no MX records
+        dns.resolve(domain, 'A', (aErr, aAddresses) => {
+          if (!aErr && aAddresses && aAddresses.length > 0) {
+            return res.json({ success: true });
+          }
+
+          // If DNS returns ENOTFOUND, the domain definitely does not exist
+          if ((mxErr && (mxErr as any).code === 'ENOTFOUND') || (aErr && (aErr as any).code === 'ENOTFOUND')) {
+            return res.status(400).json({ 
+              success: false, 
+              error: `The email domain "@${domain}" does not exist. Please check your spelling.` 
+            });
+          }
+
+          // For other transient errors (like timeouts, no internet, or local dev), allow it through
+          return res.json({ success: true });
+        });
+      });
+    } catch (error) {
+      console.error("[Email Validation API Error]", error);
+      // Fallback: allow the request if something unexpected fails
+      return res.json({ success: true });
     }
   });
 

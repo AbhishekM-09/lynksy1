@@ -4,7 +4,6 @@ import { getLinks, createLink, updateLink, deleteLink, reorderLinks, updateUser,
 import { uploadAvatar, deleteAvatar } from '@/firebase/storage'
 import { getFallbackAvatarGradient, getFallbackAvatarInitials } from '@/utils/formatters'
 import { usePlan } from '@/hooks/usePlan'
-import { getUserUrls } from '@/utils/planUtils'
 import { PhonePreview } from '@/components/links/PhonePreview'
 import { Modal } from '@/components/ui/Modal'
 import { LinkSchema } from '@/utils/validators'
@@ -14,7 +13,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { DragDropContext, Droppable, Draggable, DropResult, DraggableProvided } from '@hello-pangea/dnd'
 import { 
   Plus, Smartphone, Link2, Youtube, Instagram, MessageCircle, Linkedin,
-  Trash2, GripVertical, Settings, Pin, Sparkles, Loader2, Eye,
+  Trash2, GripVertical, Settings, Pin, Sparkles, Loader2,
   Lock, BarChart3, Ghost, Twitter, Stars, AlertCircle
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
@@ -342,21 +341,8 @@ export default function LinksPage() {
     }
   }
 
-  const { actual: profileUrl } = getUserUrls(user)
-
   return (
     <div className="grid xl:grid-cols-[1fr_320px] gap-8 relative pb-24 xl:pb-0 xl:h-[calc(100vh-140px)] xl:overflow-hidden">
-      {/* Mobile Floating Preview Trigger - Adjusted for bottom nav */}
-      <button 
-        onClick={() => {
-           window.open(profileUrl, '_blank')
-        }}
-        className="fixed bottom-28 right-6 z-40 xl:hidden w-14 h-14 bg-ink text-white rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.3)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all border border-white/10"
-      >
-        <Eye size={24} className="text-orange" />
-        <div className="absolute -top-1 -right-1 w-4 h-4 bg-orange rounded-full animate-ping opacity-75" />
-      </button>
-
       {/* Editor Side */}
       <div className="space-y-6 sm:space-y-8 xl:h-full xl:overflow-y-auto xl:pr-3 pb-24 no-scrollbar">
         <div className="flex items-center gap-2 sm:gap-4 border-b border-cream-3 overflow-x-auto no-scrollbar scroll-smooth snap-x -mx-2 px-2 sm:mx-0 sm:px-0">
@@ -398,43 +384,43 @@ export default function LinksPage() {
                   <Plus size={20} /> Add New Link
                 </button>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
-                  <button onClick={() => { setEditingLink({ title: 'WhatsApp Me', url: 'https://wa.me/', type: 'WHATSAPP' } as Partial<Link> as Link); setModalOpen(true) }} className="group relative bg-white border border-cream-3 p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all hover:border-green-500 hover:shadow-lg hover:-translate-y-1 text-center min-h-[96px]">
+                <div className="flex overflow-x-auto sm:grid sm:grid-cols-4 md:grid-cols-7 gap-2 pb-2 sm:pb-0 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+                  <button onClick={() => { setEditingLink({ title: 'WhatsApp Me', url: 'https://wa.me/', type: 'WHATSAPP' } as Partial<Link> as Link); setModalOpen(true) }} className="group relative shrink-0 w-24 sm:w-auto bg-white border border-cream-3 p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all hover:border-green-500 hover:shadow-lg hover:-translate-y-1 text-center min-h-[88px] sm:min-h-[96px]">
                     <div className="w-8 h-8 bg-green-50 text-green-500 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
                       <MessageCircle size={16} />
                     </div>
                     <span className="text-[9px] font-black uppercase tracking-wider text-muted group-hover:text-ink">WhatsApp</span>
                   </button>
                   
-                  <button onClick={() => { setEditingLink({ title: 'YouTube', url: 'https://youtube.com/', type: 'YOUTUBE' } as Partial<Link> as Link); setModalOpen(true) }} className="group relative bg-white border border-cream-3 p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all hover:border-red-500 hover:shadow-lg hover:-translate-y-1 text-center min-h-[96px]">
+                  <button onClick={() => { setEditingLink({ title: 'YouTube', url: 'https://youtube.com/', type: 'YOUTUBE' } as Partial<Link> as Link); setModalOpen(true) }} className="group relative shrink-0 w-24 sm:w-auto bg-white border border-cream-3 p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all hover:border-red-500 hover:shadow-lg hover:-translate-y-1 text-center min-h-[88px] sm:min-h-[96px]">
                     <div className="w-8 h-8 bg-red-50 text-red-500 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
                       <Youtube size={16} />
                     </div>
                     <span className="text-[9px] font-black uppercase tracking-wider text-muted group-hover:text-ink">YouTube</span>
                   </button>
 
-                  <button onClick={() => { setEditingLink({ title: 'Instagram', url: 'https://instagram.com/', type: 'INSTAGRAM' } as Partial<Link> as Link); setModalOpen(true) }} className="group relative bg-white border border-cream-3 p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all hover:border-pink-500 hover:shadow-lg hover:-translate-y-1 text-center min-h-[96px]">
+                  <button onClick={() => { setEditingLink({ title: 'Instagram', url: 'https://instagram.com/', type: 'INSTAGRAM' } as Partial<Link> as Link); setModalOpen(true) }} className="group relative shrink-0 w-24 sm:w-auto bg-white border border-cream-3 p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all hover:border-pink-500 hover:shadow-lg hover:-translate-y-1 text-center min-h-[88px] sm:min-h-[96px]">
                     <div className="w-8 h-8 bg-pink-50 text-pink-500 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
                       <Instagram size={16} />
                     </div>
                     <span className="text-[9px] font-black uppercase tracking-wider text-muted group-hover:text-ink">Instagram</span>
                   </button>
 
-                  <button onClick={() => { setEditingLink({ title: 'Snapchat', url: 'https://snapchat.com/add/', type: 'URL' } as Partial<Link> as Link); setModalOpen(true) }} className="group relative bg-white border border-cream-3 p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all hover:border-yellow-500 hover:shadow-lg hover:-translate-y-1 text-center min-h-[96px]">
+                  <button onClick={() => { setEditingLink({ title: 'Snapchat', url: 'https://snapchat.com/add/', type: 'URL' } as Partial<Link> as Link); setModalOpen(true) }} className="group relative shrink-0 w-24 sm:w-auto bg-white border border-cream-3 p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all hover:border-yellow-500 hover:shadow-lg hover:-translate-y-1 text-center min-h-[88px] sm:min-h-[96px]">
                     <div className="w-8 h-8 bg-yellow-50 text-yellow-600 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
                       <Ghost size={16} />
                     </div>
                     <span className="text-[9px] font-black uppercase tracking-wider text-muted group-hover:text-ink">Snapchat</span>
                   </button>
 
-                  <button onClick={() => { setEditingLink({ title: 'Twitter (X)', url: 'https://x.com/', type: 'URL' } as Partial<Link> as Link); setModalOpen(true) }} className="group relative bg-white border border-cream-3 p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all hover:border-black hover:shadow-lg hover:-translate-y-1 text-center min-h-[96px]">
+                  <button onClick={() => { setEditingLink({ title: 'Twitter (X)', url: 'https://x.com/', type: 'URL' } as Partial<Link> as Link); setModalOpen(true) }} className="group relative shrink-0 w-24 sm:w-auto bg-white border border-cream-3 p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all hover:border-black hover:shadow-lg hover:-translate-y-1 text-center min-h-[88px] sm:min-h-[96px]">
                     <div className="w-8 h-8 bg-slate-50 text-slate-800 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
                       <Twitter size={16} />
                     </div>
                     <span className="text-[9px] font-black uppercase tracking-wider text-muted group-hover:text-ink">Twitter (X)</span>
                   </button>
 
-                  <button onClick={() => { setEditingLink({ title: 'LinkedIn', url: 'https://linkedin.com/in/', type: 'URL' } as Partial<Link> as Link); setModalOpen(true) }} className="group relative bg-white border border-cream-3 p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all hover:border-blue-600 hover:shadow-lg hover:-translate-y-1 text-center min-h-[96px]">
+                  <button onClick={() => { setEditingLink({ title: 'LinkedIn', url: 'https://linkedin.com/in/', type: 'URL' } as Partial<Link> as Link); setModalOpen(true) }} className="group relative shrink-0 w-24 sm:w-auto bg-white border border-cream-3 p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all hover:border-blue-600 hover:shadow-lg hover:-translate-y-1 text-center min-h-[88px] sm:min-h-[96px]">
                     <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
                       <Linkedin size={16} />
                     </div>
@@ -444,7 +430,7 @@ export default function LinksPage() {
                   <button onClick={() => { 
                       if (!limits.canUseUPI) return openUpgradeModal('canUseUPI')
                       setEditingLink({ title: 'Support via UPI', url: 'upi://pay', type: 'UPI' } as Partial<Link> as Link); setModalOpen(true) 
-                    }} className="group relative bg-white border border-cream-3 p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all hover:border-purple-600 hover:shadow-lg hover:-translate-y-1 text-center min-h-[96px]">
+                    }} className="group relative shrink-0 w-24 sm:w-auto bg-white border border-cream-3 p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all hover:border-purple-600 hover:shadow-lg hover:-translate-y-1 text-center min-h-[88px] sm:min-h-[96px]">
                     <div className="w-8 h-8 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
                       <Smartphone size={16} />
                     </div>

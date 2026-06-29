@@ -37,14 +37,15 @@ export function PhonePreview({ user, links, products = [], showStore = true }: P
   const effectiveButtonColor = user.buttonColor || user.accentColor || theme.accentColor
   const rawButtonTextColor = user.buttonTextColor || theme.buttonTextColor || (effectiveButtonStyle === 'filled' || effectiveButtonStyle === 'pill' ? '#FFFFFF' : effectiveButtonColor)
   
-  // Guard against contrast issues (e.g. white text on a white button or dark text on a dark button)
   const isButtonBgLight = isLightColor(effectiveButtonColor)
   const isButtonTextLight = isLightColor(rawButtonTextColor)
-  const effectiveButtonTextColor = (effectiveButtonStyle === 'filled' || effectiveButtonStyle === 'pill')
-    ? (isButtonBgLight === isButtonTextLight 
-        ? (isButtonBgLight ? '#1C1813' : '#FFFFFF') 
+  const effectiveButtonTextColor = user.buttonTextColor 
+    ? user.buttonTextColor 
+    : ((effectiveButtonStyle === 'filled' || effectiveButtonStyle === 'pill')
+        ? (isButtonBgLight === isButtonTextLight 
+            ? (isButtonBgLight ? '#1C1813' : '#FFFFFF') 
+            : rawButtonTextColor)
         : rawButtonTextColor)
-    : rawButtonTextColor
 
   const effectiveRadius = user.themeSettings?.borderRadius ?? theme.borderRadius ?? (effectiveButtonStyle === 'pill' ? 999 : 16)
   const effectiveTransparency = user.themeSettings?.cardTransparency ?? theme.cardTransparency ?? (theme.isGlass ? 0.1 : 1)
@@ -636,7 +637,7 @@ export function PhonePreview({ user, links, products = [], showStore = true }: P
                           : effectiveButtonStyle === 'soft' 
                             ? `rgba(${parseInt(effectiveButtonColor.slice(1,3), 16)}, ${parseInt(effectiveButtonColor.slice(3,5), 16)}, ${parseInt(effectiveButtonColor.slice(5,7), 16)}, 0.1)` 
                             : 'transparent'),
-                      color: effectiveButtonStyle === 'filled' || effectiveButtonStyle === 'pill' ? effectiveButtonTextColor : effectiveButtonColor,
+                      color: effectiveButtonTextColor,
                       borderColor: theme.id === 'pride-rainbow' ? 'transparent' : effectiveButtonColor,
                       animation: theme.id === 'pride-rainbow' ? 'rainbow-border 5s linear infinite' : undefined,
                       backdropFilter: (theme.isGlass || theme.linkBackdrop) ? `blur(${user.themeSettings?.blurAmount || theme.blurAmount || 10}px)` : undefined,

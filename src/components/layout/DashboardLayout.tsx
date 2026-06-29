@@ -2,6 +2,7 @@ import React from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
+import { MobileBottomNav } from './MobileBottomNav'
 import { useAuthStore } from '@/store/authStore'
 import { PinModal } from '../dashboard/PinModal'
 import { toast } from 'react-hot-toast'
@@ -34,7 +35,7 @@ export function DashboardLayout() {
         <EmailVerifyBanner />
         <SubscriptionWarningBanner />
         <TopBar />
-        <main className="flex-1 px-2 py-4 pb-8 lg:p-8 lg:pb-8 max-w-6xl mx-auto w-full">
+        <main className="flex-1 px-2 py-4 pb-32 lg:p-8 lg:pb-8 max-w-6xl mx-auto w-full">
           {showLock ? (
             <div className="h-[60vh] flex items-center justify-center">
                <div className="text-center">
@@ -53,6 +54,9 @@ export function DashboardLayout() {
             <Outlet />
           )}
         </main>
+        
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomNav />
       </div>
 
       {/* PIN Verification Modal */}
