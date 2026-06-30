@@ -461,7 +461,7 @@ CREATE POLICY "Delete Policy" ON domains FOR DELETE USING ((data->>'userId') = a
 -- 7. links
 CREATE POLICY "Select Policy" ON links FOR SELECT USING (true);
 CREATE POLICY "Insert Policy" ON links FOR INSERT WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
-CREATE POLICY "Update Policy" ON links FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON links FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "Delete Policy" ON links FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
 
 -- 8. themes
@@ -567,9 +567,9 @@ CREATE POLICY "Update Policy" ON click_events FOR UPDATE USING (public.is_admin(
 CREATE POLICY "Delete Policy" ON click_events FOR DELETE USING (public.is_admin());
 
 -- 22. analytics_daily
-CREATE POLICY "Select Policy" ON analytics_daily FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
-CREATE POLICY "Insert Policy" ON analytics_daily FOR INSERT WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
-CREATE POLICY "Update Policy" ON analytics_daily FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Select Policy" ON analytics_daily FOR SELECT USING (true);
+CREATE POLICY "Insert Policy" ON analytics_daily FOR INSERT WITH CHECK (true);
+CREATE POLICY "Update Policy" ON analytics_daily FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "Delete Policy" ON analytics_daily FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
 
 -- 23. short_link_clicks
@@ -591,16 +591,16 @@ CREATE POLICY "Update Policy" ON tips FOR UPDATE USING (public.is_admin()) WITH 
 CREATE POLICY "Delete Policy" ON tips FOR DELETE USING (public.is_admin());
 
 -- 26. email_subscribers
-CREATE POLICY "Select Policy" ON email_subscribers FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Select Policy" ON email_subscribers FOR SELECT USING ((data->>'creatorId') = auth.uid()::text OR public.is_admin());
 CREATE POLICY "Insert Policy" ON email_subscribers FOR INSERT WITH CHECK (true);
-CREATE POLICY "Update Policy" ON email_subscribers FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
-CREATE POLICY "Delete Policy" ON email_subscribers FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON email_subscribers FOR UPDATE USING ((data->>'creatorId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'creatorId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON email_subscribers FOR DELETE USING ((data->>'creatorId') = auth.uid()::text OR public.is_admin());
 
 -- 27. leads
-CREATE POLICY "Select Policy" ON leads FOR SELECT USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Select Policy" ON leads FOR SELECT USING ((data->>'creatorId') = auth.uid()::text OR public.is_admin());
 CREATE POLICY "Insert Policy" ON leads FOR INSERT WITH CHECK (true);
-CREATE POLICY "Update Policy" ON leads FOR UPDATE USING ((data->>'userId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'userId') = auth.uid()::text OR public.is_admin());
-CREATE POLICY "Delete Policy" ON leads FOR DELETE USING ((data->>'userId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Update Policy" ON leads FOR UPDATE USING ((data->>'creatorId') = auth.uid()::text OR public.is_admin()) WITH CHECK ((data->>'creatorId') = auth.uid()::text OR public.is_admin());
+CREATE POLICY "Delete Policy" ON leads FOR DELETE USING ((data->>'creatorId') = auth.uid()::text OR public.is_admin());
 
 -- 28. reports
 CREATE POLICY "Select Policy" ON reports FOR SELECT USING (public.is_admin());
@@ -722,4 +722,56 @@ CREATE TRIGGER trg_check_downloads_update
 BEFORE UPDATE ON downloads
 FOR EACH ROW
 EXECUTE FUNCTION check_downloads_update();
+
+
+-- Trigger and check function for links updates (allowing public clickCount increments)
+CREATE OR REPLACE FUNCTION check_links_update()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- If owner or admin, allow any change
+  IF (NEW.data->>'userId') = auth.uid()::text OR public.is_admin() THEN
+    RETURN NEW;
+  END IF;
+
+  -- Otherwise, only allow updating clickCount and lastClickedAt
+  IF (OLD.data - ARRAY['clickCount', 'lastClickedAt']) = 
+     (NEW.data - ARRAY['clickCount', 'lastClickedAt']) THEN
+    RETURN NEW;
+  END IF;
+
+  RAISE EXCEPTION 'Unauthorized update to restricted fields on links';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_check_links_update ON links;
+CREATE TRIGGER trg_check_links_update
+BEFORE UPDATE ON links
+FOR EACH ROW
+EXECUTE FUNCTION check_links_update();
+
+
+-- Trigger and check function for analytics_daily updates (allowing public aggregate views/clicks counts)
+CREATE OR REPLACE FUNCTION check_analytics_daily_update()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- If owner or admin, allow any change
+  IF (NEW.data->>'userId') = auth.uid()::text OR public.is_admin() THEN
+    RETURN NEW;
+  END IF;
+
+  -- Otherwise, only allow updating views, clicks, updatedAt, date, and userId
+  IF (OLD.data - ARRAY['views', 'clicks', 'updatedAt', 'date']) = 
+     (NEW.data - ARRAY['views', 'clicks', 'updatedAt', 'date']) THEN
+    RETURN NEW;
+  END IF;
+
+  RAISE EXCEPTION 'Unauthorized update to restricted fields on analytics_daily';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_check_analytics_daily_update ON analytics_daily;
+CREATE TRIGGER trg_check_analytics_daily_update
+BEFORE UPDATE ON analytics_daily
+FOR EACH ROW
+EXECUTE FUNCTION check_analytics_daily_update();
 

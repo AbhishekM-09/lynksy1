@@ -281,7 +281,7 @@ export async function getDocFromCache(docRef: DocumentReference) {
   return getDoc(docRef)
 }
 
-export async function setDoc(docRef: DocumentReference, data: any, options?: { merge?: boolean }) {
+export async function setDoc(docRef: DocumentReference, data: any, options?: { merge?: boolean; isInsertOnly?: boolean; isUpdateOnly?: boolean }) {
   const { tableName, id } = getPathTableAndId(docRef.path)
   if (!id) return
 
@@ -315,6 +315,8 @@ export async function setDoc(docRef: DocumentReference, data: any, options?: { m
   if (isSupabaseConfigured && supabase) {
     try {
       let finalDataToWrite = cleanData
+      let rowExists = false
+      let fetchedCheck = false
 
       if (options?.merge) {
         // Fetch existing first
@@ -323,6 +325,11 @@ export async function setDoc(docRef: DocumentReference, data: any, options?: { m
           .select('data')
           .eq('id', id)
           .maybeSingle()
+        
+        if (existingRow) {
+          rowExists = true
+        }
+        fetchedCheck = true
         
         const existingData = existingRow?.data || {}
         const merged = { ...existingData }
@@ -336,10 +343,41 @@ export async function setDoc(docRef: DocumentReference, data: any, options?: { m
         finalDataToWrite = merged
       }
 
-      const { error } = await supabase
-        .from(tableName)
-        .upsert({ id, data: finalDataToWrite, updated_at: new Date().toISOString() })
-      if (error) throw error
+      if (options?.isInsertOnly) {
+        const { error } = await supabase
+          .from(tableName)
+          .insert({ id, data: finalDataToWrite, updated_at: new Date().toISOString() })
+        if (error) throw error
+      } else if (options?.isUpdateOnly) {
+        const { error } = await supabase
+          .from(tableName)
+          .update({ data: finalDataToWrite, updated_at: new Date().toISOString() })
+          .eq('id', id)
+        if (error) throw error
+      } else {
+        // Standard flow: check if row exists to decide insert vs update, avoiding upsert unless explicitly requested
+        if (!fetchedCheck) {
+          const { data: existingRow } = await supabase
+            .from(tableName)
+            .select('id')
+            .eq('id', id)
+            .maybeSingle()
+          rowExists = !!existingRow
+        }
+
+        if (rowExists) {
+          const { error } = await supabase
+            .from(tableName)
+            .update({ data: finalDataToWrite, updated_at: new Date().toISOString() })
+            .eq('id', id)
+          if (error) throw error
+        } else {
+          const { error } = await supabase
+            .from(tableName)
+            .insert({ id, data: finalDataToWrite, updated_at: new Date().toISOString() })
+          if (error) throw error
+        }
+      }
     } catch (err) {
       console.error(`[Supabase setDoc failed] on ${tableName}/${id}:`, err)
     }
@@ -347,7 +385,7 @@ export async function setDoc(docRef: DocumentReference, data: any, options?: { m
 }
 
 export async function updateDoc(docRef: DocumentReference, data: any) {
-  await setDoc(docRef, data, { merge: true })
+  await setDoc(docRef, data, { merge: true, isUpdateOnly: true })
 }
 
 export async function deleteDoc(docRef: DocumentReference) {
@@ -372,7 +410,7 @@ export async function deleteDoc(docRef: DocumentReference) {
 export async function addDoc(colRef: CollectionReference, data: any): Promise<DocumentReference> {
   const generatedId = 'gen_' + Math.random().toString(36).substring(2, 15)
   const docRef = doc(colRef, generatedId)
-  await setDoc(docRef, data)
+  await setDoc(docRef, data, { isInsertOnly: true })
   return docRef
 }
 

@@ -1427,7 +1427,7 @@ export const addEmailSubscriber = async (
       email: emailLower,
       source,
       subscribedAt: serverTimestamp()
-    })
+    }, { isInsertOnly: true })
     return docId
   } catch (error) {
     if (error instanceof Error && error.message === 'ALREADY_SUBSCRIBED') {

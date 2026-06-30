@@ -184,7 +184,7 @@ export async function recordShortLinkClick(
       referrer: tracking.referrer,
       timestamp: serverTimestamp(),
       isUnique: tracking.isUnique
-    })
+    }, { isInsertOnly: true })
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `short_links/${shortLink.id}/clicks/${clickId}`)
   }
